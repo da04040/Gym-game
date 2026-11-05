@@ -1,618 +1,1293 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
-<title>Tap Kombat</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#050404">
+<title>Iron Tap</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@300;500;700&family=Inter:wght@500;700;800&display=swap" rel="stylesheet">
 <style>
-  :root { --bg:#0b0405; --blood:#b3000f; --gold:#e0a82e; --bone:#f1e6d0; --dim:#8a7a6a; }
-  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; user-select:none; }
-  html, body { margin:0; height:100%; background:var(--bg); color:var(--bone); font-family:Impact, "Arial Black", sans-serif; overflow:hidden; touch-action:manipulation; }
-  #app { height:100%; max-width:480px; margin:0 auto; display:flex; flex-direction:column; padding:12px; }
-  .screen { display:none; flex:1; flex-direction:column; min-height:0; }
-  .screen.on { display:flex; }
-  #menu { overflow-y:auto; }
-  h1 { font-size:46px; margin:6px 0 0; line-height:.95; color:var(--gold); text-shadow:0 3px 0 var(--blood), 0 0 24px rgba(255,106,0,.45); letter-spacing:2px; font-weight:normal; }
-  .sub { font-family:Arial, sans-serif; color:var(--dim); font-size:14px; margin:8px 0 12px; }
-  .row { display:flex; gap:8px; margin-bottom:12px; }
-  .fighter { flex:1; background:#150304; border:3px solid #4a2a1a; color:var(--bone); padding:0 0 6px; font:inherit; font-size:15px; cursor:pointer; overflow:hidden; }
-  .fighter.sel { border-color:var(--gold); background:#2a0709; }
-  .fighter svg { width:100%; height:84px; display:block; background:linear-gradient(#2b2b30,#121214); }
-  .picks { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
-  .pick { background:linear-gradient(#2a0709,#150304); border:3px solid var(--gold); color:var(--bone); padding:10px 12px; text-align:left; font:inherit; font-size:19px; letter-spacing:1px; cursor:pointer; clip-path:polygon(0 0,calc(100% - 12px) 0,100% 12px,100% 100%,12px 100%,0 calc(100% - 12px)); }
-  .pick small { display:block; font-family:Arial, sans-serif; font-size:12px; color:var(--gold); margin-top:3px; letter-spacing:0; }
-  .pick:active { background:var(--blood); }
-  .hud { display:flex; justify-content:space-between; align-items:flex-end; }
-  .big { font-size:46px; line-height:1; color:var(--gold); }
-  .lbl { font-family:Arial, sans-serif; font-size:12px; color:var(--dim); letter-spacing:1px; }
-  .health { height:16px; background:#3a0a0e; border:3px solid var(--gold); margin:6px 6px 10px; transform:skewX(-18deg); overflow:hidden; }
-  .health i { display:block; height:100%; width:70%; background:linear-gradient(#ffe27a,#e0a82e); }
-  .health.low i { background:linear-gradient(#ff7b7b,#d00018); }
-  #stage { flex:1; min-height:0; position:relative; overflow:hidden; border:3px solid var(--blood); background:#121214; }
-  #stage.shake { animation:shake .12s; }
-  #stage.crack { animation:shake .5s; }
-  @keyframes shake { 0%{transform:translate(0,0)} 25%{transform:translate(-5px,4px)} 50%{transform:translate(5px,-4px)} 75%{transform:translate(-3px,-3px)} 100%{transform:translate(0,0)} }
-  #scene { width:100%; height:100%; display:block; }
-  .plate.new { animation:pop .3s ease-out; transform-box:fill-box; transform-origin:center; }
-  @keyframes pop { from { transform:scale(0); } to { transform:scale(1); } }
-  #cue { position:absolute; top:6%; left:0; right:0; text-align:center; font-size:42px; color:var(--gold); text-shadow:0 3px 0 var(--blood); opacity:0; pointer-events:none; }
-  #cue.show { animation:cue .8s ease-out; }
-  @keyframes cue { 0% { opacity:1; transform:scale(.6); } 20% { transform:scale(1.15); } 100% { opacity:0; transform:scale(1) translateY(-24px); } }
-  #banner { position:absolute; inset:0; display:none; flex-direction:column; align-items:center; justify-content:center; background:rgba(11,4,5,.78); text-align:center; pointer-events:none; }
-  #banner.show { display:flex; animation:flash 1.3s forwards; }
-  #banner h2 { font-size:80px; margin:0; font-weight:normal; color:var(--gold); text-shadow:0 4px 0 var(--blood), 0 0 30px #ff6a00; }
-  #banner p { margin:6px 0 0; font-size:24px; color:var(--bone); letter-spacing:2px; }
-  @keyframes flash { 0% { opacity:0; transform:scale(.4); } 15% { opacity:1; transform:scale(1.1); } 25% { transform:scale(1); } 80% { opacity:1; } 100% { opacity:0; } }
-  #foot { display:flex; justify-content:space-between; align-items:center; padding-top:8px; }
-  #foot span { font-family:Arial, sans-serif; color:var(--dim); font-size:13px; }
-  .btn { background:var(--blood); color:var(--bone); border:2px solid var(--gold); padding:10px 18px; font:inherit; font-size:16px; letter-spacing:1px; cursor:pointer; }
-  button:focus-visible { outline:3px solid #fff; outline-offset:3px; }
-  #endScreen { align-items:center; justify-content:center; text-align:center; }
-  #endScreen h2 { font-size:52px; margin:0 0 6px; font-weight:normal; color:var(--gold); text-shadow:0 3px 0 var(--blood); }
-  #endScreen p { font-family:Arial, sans-serif; font-size:18px; margin:6px 0; }
-  #endScreen .btn { width:100%; padding:16px; font-size:20px; margin-top:14px; }
+  :root {
+    --bg: #050404;
+    --panel: #110f0d;
+    --chalk: #efe9de;
+    --muted: #8a8277;
+    --ember: #ff8a3d;
+    --blood: #e0402a;
+    --steel: #9fb6d6;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    margin: 0; height: 100%; overflow: hidden;
+    background: var(--bg); color: var(--chalk);
+    font-family: Inter, system-ui, sans-serif;
+    touch-action: manipulation; user-select: none; -webkit-user-select: none;
+  }
+  #app { position: fixed; inset: 0; display: flex; flex-direction: column;
+    padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom); }
+
+  #hud { padding: 12px 16px 8px; display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; align-items: end;
+    background: var(--bg); position: relative; z-index: 2; border-bottom: 1px solid #1a1714; }
+  #liftName { font-family: Oswald, sans-serif; font-weight: 500; font-size: 15px; letter-spacing: 3px; text-transform: uppercase; color: var(--muted); }
+  #liftName span { color: var(--chalk); }
+  #weight { font-family: Oswald, sans-serif; font-weight: 700; font-size: 40px; line-height: 1; text-align: right; color: var(--chalk); }
+  #weight small { font-size: 14px; color: var(--muted); margin-left: 3px; font-weight: 500; letter-spacing: 2px; }
+  #reps { font-family: Oswald, sans-serif; font-size: 13px; letter-spacing: 2px; color: var(--muted); }
+  #reps b { color: var(--ember); font-size: 26px; font-weight: 700; letter-spacing: 0; margin-left: 4px; }
+  #nextUp { font-size: 11.5px; color: var(--muted); text-align: right; font-weight: 700; letter-spacing: .4px; }
+  #nextUp b { color: var(--chalk); }
+  .meter { grid-column: 1 / -1; height: 3px; background: #1d1a17; overflow: hidden; }
+  .meter > div { height: 100%; width: 0; }
+  #prMeter > div { background: var(--ember); transition: width .12s; box-shadow: 0 0 8px var(--ember); }
+  #stressMeter > div { background: var(--blood); box-shadow: 0 0 8px var(--blood); }
+  .meterLabel { grid-column: 1 / -1; display: flex; justify-content: space-between; font-size: 10px; color: var(--muted); font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase; margin-top: 7px; margin-bottom: 3px; }
+
+  #stage { position: relative; flex: 1; min-height: 0; }
+  canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+
+  #tapHint { text-align: center; padding: 10px 16px 16px; font-family: Oswald, sans-serif; font-weight: 500; font-size: 17px; letter-spacing: 6px; color: var(--muted); background: var(--bg); }
+  #tapHint.pulse { animation: pulse 1.4s ease-in-out infinite; }
+  #tapHint.warn { color: var(--blood); animation: shakeTxt .12s linear infinite; }
+  @keyframes pulse { 50% { color: var(--chalk); } }
+  @keyframes shakeTxt { 50% { transform: translateX(3px); } }
+
+  #banner { position: absolute; left: 0; right: 0; top: 12%; text-align: center; pointer-events: none;
+    font-family: Oswald, sans-serif; font-weight: 700; font-size: 44px; letter-spacing: 4px; color: var(--chalk);
+    text-shadow: 0 0 30px rgba(255,138,61,.7), 0 2px 0 #000;
+    opacity: 0; transform: translateY(8px); transition: opacity .25s, transform .25s; z-index: 3; }
+  #banner.show { opacity: 1; transform: none; }
+  #banner.pr { color: var(--ember); font-size: 54px; }
+  #banner small { display: block; font-family: Inter, sans-serif; font-weight: 700; font-size: 12px; color: var(--muted); letter-spacing: 3px; text-transform: uppercase; margin-top: 4px; text-shadow: none; }
+
+  .overlay { position: fixed; inset: 0; background: radial-gradient(ellipse at 50% 0%, #2a1a10 0%, #050404 60%); display: none; overflow-y: auto;
+    flex-direction: column; align-items: center; justify-content: center; padding: 24px 16px; text-align: center; z-index: 10; }
+  .overlay.show { display: flex; }
+  h1 { font-family: Oswald, sans-serif; font-weight: 700; font-size: clamp(54px, 17vw, 88px); line-height: .9; margin: 0; letter-spacing: 6px; }
+  h1 span { color: var(--ember); text-shadow: 0 0 30px rgba(255,138,61,.5); }
+  .sub { color: var(--muted); font-size: 13.5px; margin: 12px 0 20px; max-width: 360px; line-height: 1.5; }
+  .chars { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; width: 100%; max-width: 420px; }
+  button { font: inherit; cursor: pointer; border: 0; }
+  .charBtn { background: var(--panel); color: var(--chalk); border: 1px solid #241f1b; border-radius: 4px; padding: 0 0 10px; overflow: hidden; }
+  .charBtn.sel { border-color: var(--ember); box-shadow: 0 0 0 1px var(--ember), 0 0 24px rgba(255,138,61,.25); }
+  .charBtn canvas { position: static; width: 100%; height: auto; aspect-ratio: 1 / 1.2; }
+  .charBtn .n { font-family: Oswald, sans-serif; font-weight: 700; font-size: 18px; letter-spacing: 3px; margin-top: 6px; }
+  .charBtn .d { font-size: 10px; color: var(--muted); font-weight: 700; letter-spacing: 1px; text-transform: uppercase; }
+  .pickLbl { width: 100%; max-width: 420px; text-align: left; font-size: 10px; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); margin: 14px 0 6px; }
+  .workouts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; width: 100%; max-width: 420px; }
+  .wBtn { background: var(--panel); color: var(--chalk); border: 1px solid #241f1b; border-radius: 4px; padding: 10px 4px; font-family: Oswald, sans-serif; font-weight: 500; font-size: 13px; letter-spacing: 1.5px; text-transform: uppercase; }
+  .wBtn small { display: block; font-family: Inter, sans-serif; font-size: 10px; color: var(--muted); letter-spacing: .5px; font-weight: 700; margin-top: 2px; }
+  .wBtn.sel { border-color: var(--ember); color: var(--ember); box-shadow: 0 0 0 1px var(--ember); }
+  .startBtn { margin-top: 16px; width: 100%; max-width: 420px; background: var(--ember); color: #120a05; font-family: Oswald, sans-serif; font-weight: 700; font-size: 22px; letter-spacing: 5px; padding: 14px; border-radius: 4px; }
+  .startBtn:active { transform: scale(.98); }
+  .best { margin-top: 12px; font-size: 12px; font-weight: 800; color: var(--ember); letter-spacing: 1px; }
+  .rules { margin-top: 12px; font-size: 12px; color: var(--muted); line-height: 1.6; max-width: 380px; }
+  .rules b { color: var(--chalk); }
+
+  #endTitle { font-family: Oswald, sans-serif; font-weight: 700; font-size: clamp(50px, 16vw, 88px); line-height: .95; letter-spacing: 4px; color: var(--blood); text-shadow: 0 0 40px rgba(224,64,42,.5); }
+  #endStats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 20px 0; width: 100%; max-width: 340px; }
+  .stat { background: var(--panel); border: 1px solid #221d19; border-radius: 4px; padding: 12px 10px; }
+  .stat b { display: block; font-family: Oswald, sans-serif; font-weight: 700; font-size: 28px; color: var(--chalk); }
+  .stat span { font-size: 10px; font-weight: 800; color: var(--muted); text-transform: uppercase; letter-spacing: 1.5px; }
+  #endNote { color: var(--ember); font-size: 13px; font-weight: 800; margin-bottom: 20px; min-height: 1em; letter-spacing: 1px; }
+  .btnRow { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+  .btn { background: var(--chalk); color: #111; padding: 14px 22px; border-radius: 4px; font-weight: 800; font-size: 15px; letter-spacing: 1px; }
+  .btn.ghost { background: transparent; color: var(--chalk); border: 1px solid #3a332d; }
+  .btn:active { transform: scale(.97); }
+  #confetti { position: fixed; inset: 0; pointer-events: none; z-index: 11; width: 100%; height: 100%; }
 </style>
 </head>
 <body>
-<svg width="0" height="0" style="position:absolute"><defs id="defs"></defs></svg>
 <div id="app">
-
-  <div id="menu" class="screen on">
-    <h1>TAP KOMBAT</h1>
-    <p class="sub">Pick a fighter and an exercise. Tap to rep. Stop tapping and the bar breaks. Every rep gets harder.</p>
-    <div class="row" id="fighters"></div>
-    <div class="picks" id="picks"></div>
+  <div id="hud">
+    <div id="liftName">LVL 1 · <span>Bench Press</span></div>
+    <div id="weight">135<small>LB</small></div>
+    <div id="reps">REPS<b id="repCount">0</b></div>
+    <div id="nextUp"><span id="plateLbl">Plates in</span> <b id="plateIn">5</b> · PR in <b id="prIn">20</b></div>
+    <div class="meterLabel"><span>Next PR</span><span id="prCountLbl">PRs 0</span></div>
+    <div class="meter" id="prMeter"><div></div></div>
+    <div class="meterLabel"><span>Spotter</span><span id="stressLbl">Tap within 1.3s</span></div>
+    <div class="meter" id="stressMeter"><div></div></div>
   </div>
-
-  <div id="play" class="screen">
-    <div class="hud">
-      <div><div class="lbl" id="liftName"></div><div class="big"><span id="weight">45</span><span class="lbl"> LB</span></div></div>
-      <div style="text-align:right"><div class="lbl" id="fname"></div><div class="big" id="reps">0</div></div>
-    </div>
-    <div class="health" id="gripWrap"><i id="grip"></i></div>
-    <div id="stage">
-      <svg id="scene" viewBox="0 0 300 360" preserveAspectRatio="xMidYMid meet">
-        <g id="bgG"></g>
-        <g id="helpG"></g>
-        <g id="bodyG"></g>
-        <path id="armL" fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="22"/>
-        <path id="armR" fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="22"/>
-        <path id="hlL" fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="8" stroke="#fff" opacity=".22"/>
-        <path id="hlR" fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="8" stroke="#fff" opacity=".22"/>
-        <g id="barG"><g id="barL"></g><g id="barR"></g></g>
-        <circle id="handL" r="11"/><circle id="handR" r="11"/>
-      </svg>
-      <div id="cue"></div>
-      <div id="banner"><h2>NEW PR!</h2><p id="bannerSub"></p></div>
-    </div>
-    <div id="foot"><span id="hint">Tap to start. Keep tapping!</span><button class="btn" id="finish">FINISH HIM</button></div>
+  <div id="stage">
+    <canvas id="c"></canvas>
+    <div id="banner"></div>
   </div>
-
-  <div id="endScreen" class="screen">
-    <h2 id="endTitle">FLAWLESS VICTORY</h2>
-    <p id="endText"></p>
-    <button class="btn" id="again">FIGHT AGAIN</button>
-    <button class="btn" id="other" style="background:#150304">CHANGE LIFT OR FIGHTER</button>
-  </div>
-
+  <div id="tapHint" class="pulse">TAP TO LIFT</div>
 </div>
 
+<div class="overlay show" id="startScreen">
+  <h1>IRON <span>TAP</span></h1>
+  <p class="sub">Every tap is a rep. Every 5 reps you rack it, get up and load more plates. Stop tapping and your spotter re-racks it. A new PR every 20, and your lifter grows with each one.</p>
+  <div class="pickLbl">Choose your lifter</div>
+  <div class="chars" id="chars"></div>
+  <div class="pickLbl">Choose your workout</div>
+  <div class="workouts" id="workouts"></div>
+  <button class="startBtn" id="startBtn">START LIFTING</button>
+  <div class="best" id="bestLbl"></div>
+  <div class="rules">
+    Max out the sleeves, re-rack, and move up a level on the same lift.<br>
+    The longer you go, the less time you get between taps. <b>Stop tapping and your spotter runs in and re-racks the bar</b>. Set over, start again.
+  </div>
+</div>
+
+<div class="overlay" id="endScreen">
+  <div id="endTitle">SET OVER</div>
+  <div id="endStats"></div>
+  <div id="endNote"></div>
+  <div class="btnRow">
+    <button class="btn" id="againBtn">Restart</button>
+    <button class="btn ghost" id="menuBtn">Change workout</button>
+  </div>
+</div>
+<canvas id="confetti"></canvas>
+
 <script>
-const FIGHTERS = [
-  { name:'TITAN', skin:'#7a4a2e', dark:'#3f2113', trunks:'#e0a82e', hair:'bald' },
-  { name:'BULL',  skin:'#c98a5b', dark:'#7d4a28', trunks:'#c4101f', hair:'short' },
-  { name:'OAK',   skin:'#e8b894', dark:'#a8704a', trunks:'#2e7d4a', hair:'wave' }
-];
-const HELPERS = [
-  { skin:'#8a5a3b', hair:'#120c08', shirt:'#c4101f', shorts:'#1c1c22' },
-  { skin:'#e0b090', hair:'#6b4a24', shirt:'#2a6fd6', shorts:'#2b2b33' }
-];
-const LIFTS = {
-  bench: { type:'bench', name:'BENCH PRESS', base:[],   adds:[10,25,35,45], low:238, high:132, hand:42, shoulder:68, sy:262 },
-  dead:  { type:'dead',  name:'DEADLIFT',    base:[45],  adds:[45,45,45,45], low:254, high:212, hand:42, shoulder:56, sy:114 },
-  squat: { type:'squat', name:'SQUAT',       base:[25],  adds:[25,35,45,45], low:104, high:164, hand:48, shoulder:56, sy:114 },
-  curl:  { type:'curl',  name:'BARBELL CURL',base:[],    adds:[10,10,25,25], low:216, high:128, hand:40, shoulder:56, sy:114 },
-  press: { type:'press', name:'OVERHEAD PRESS', base:[], adds:[10,25,25,35], low:112, high:52, hand:44, shoulder:56, sy:114 },
-  shrug: { type:'shrug', name:'SHRUGS',      base:[45],  adds:[45,45,45,45], low:226, high:192, hand:44, shoulder:56, sy:114 }
-};
-const TIERS = [10,25,35,45,55,70,90,110];
-const TCOL = { 10:'#e6e6e6', 25:'#2e9e4f', 35:'#e3c52b', 45:'#2a6fd6', 55:'#d42a2a', 70:'#8a3fc7', 90:'#e8741c', 110:'#d9b13a' };
-const CUES = ['BRUTAL!', 'EXCELLENT!', 'OUTSTANDING!', 'TOASTY!', 'BIGGER!'];
-const PW = 10, MAXP = 8, TAP_GAIN = 18;
-function paceNeeded() { return 0.8 + 0.04 * reps; }
+(() => {
+  // =========================================================
+  // CONFIG
+  // =========================================================
+  const BAR_LB = 45, PLATE_LB = 45, MAX_PLATES = 6;
+  const REPS_PER_LOAD = 5, PR_EVERY = 20;
+  // Harder every rep: less time allowed between taps, and the bar bends faster once you stop.
+  const graceFor = r => Math.max(0.38, 1.3 - r * 0.009);
+  const bendTimeFor = r => Math.max(0.55, 1.4 - r * 0.007);
+  const UP = 0.1, DOWN = 0.2;                // rep animation (seconds)
 
-let lift = 'bench', fi = 0, reps = 0, plates = [], best = {};
-let nextPlateAt = 5, lastTap = 0;
-function plateGap(r) { return Math.min(20, 5 + 3 * Math.floor(r / 20)); }
-let loadT = 0, rackT = 0, placed = false, loadN = 0, pendingAfter = [], pendingPlate = 25;
-let cur = 0, target = 0, grip = 70, running = false, state = 'menu', last = 0, started = false;
-try { best = JSON.parse(localStorage.getItem('tapkombat-pr')) || {}; } catch (e) {}
-try { fi = parseInt(localStorage.getItem('tapkombat-fighter')) || 0; } catch (e) {}
+  // Real Olympic bar proportions (inches)
+  const BAR = { half: 43.3, collar: 25.75, shaftR: 0.56, sleeveR: 1.0 };
+  const PLATE = { R: 8.86, T: 2.0 };
 
-const $ = id => document.getElementById(id);
-const screens = ['menu','play','endScreen'];
-function show(id) { screens.forEach(s => $(s).classList.toggle('on', s === id)); }
-function weightNow() { return 45 + 2 * plates.reduce((a, b) => a + b, 0); }
-function shade(hex, f) {
-  const n = parseInt(hex.slice(1), 16);
-  const c = [n >> 16, (n >> 8) & 255, n & 255].map(v => Math.max(0, Math.min(255, Math.round(v * f))));
-  return '#' + c.map(v => v.toString(16).padStart(2, '0')).join('');
-}
+  const EXERCISES = [
+    { id: 'bench', name: 'Bench Press',    start: 1, restP: 1, hooks: true },
+    { id: 'squat', name: 'Squat',          start: 2, restP: 1, hooks: true },
+    { id: 'dead',  name: 'Deadlift',       start: 2, restP: 0, hooks: false },
+    { id: 'ohp',   name: 'Overhead Press', start: 1, restP: 0, hooks: true },
+    { id: 'curl',  name: 'Barbell Curl',   start: 0, restP: 0, hooks: false },
+  ];
 
-function buildDefs() {
-  let d = '';
-  d += '<linearGradient id="steel" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f4f4f4"/><stop offset=".5" stop-color="#a9adb4"/><stop offset="1" stop-color="#55585f"/></linearGradient>';
-  d += '<linearGradient id="chrome" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff"/><stop offset=".4" stop-color="#c3c7ce"/><stop offset="1" stop-color="#5f636b"/></linearGradient>';
-  d += '<pattern id="knurl" width="3" height="3" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="3" height="3" fill="#9a9ea6"/><rect width="1.2" height="3" fill="#42454c"/></pattern>';
-  d += '<linearGradient id="wall" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1b1b1f"/><stop offset="1" stop-color="#34343a"/></linearGradient>';
-  d += '<linearGradient id="floor" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2a2a2e"/><stop offset="1" stop-color="#0e0e10"/></linearGradient>';
-  d += '<linearGradient id="wood" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#b98b55"/><stop offset="1" stop-color="#6e4b27"/></linearGradient>';
-  d += '<radialGradient id="spot" cx=".5" cy="0" r="1"><stop offset="0" stop-color="#fff" stop-opacity=".35"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>';
-  d += '<linearGradient id="pad" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2d2d33"/><stop offset="1" stop-color="#121215"/></linearGradient>';
-  d += '<linearGradient id="mirror" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#7d8c98"/><stop offset=".45" stop-color="#34414b"/><stop offset=".55" stop-color="#5c6b77"/><stop offset="1" stop-color="#27313a"/></linearGradient>';
-  d += '<linearGradient id="gold" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffd54a"/><stop offset="1" stop-color="#b98300"/></linearGradient>';
-  TIERS.forEach(t => {
-    const c = TCOL[t];
-    d += '<linearGradient id="pl' + t + '" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="' + shade(c, .45) + '"/><stop offset=".28" stop-color="' + c + '"/><stop offset=".5" stop-color="' + shade(c, 1.35) + '"/><stop offset=".72" stop-color="' + c + '"/><stop offset="1" stop-color="' + shade(c, .45) + '"/></linearGradient>';
-  });
-  FIGHTERS.forEach((f, i) => {
-    d += '<linearGradient id="sk' + i + '" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="' + shade(f.skin, .62) + '"/><stop offset=".28" stop-color="' + f.skin + '"/><stop offset=".5" stop-color="' + shade(f.skin, 1.18) + '"/><stop offset=".72" stop-color="' + f.skin + '"/><stop offset="1" stop-color="' + shade(f.skin, .62) + '"/></linearGradient>';
-    d += '<radialGradient id="dl' + i + '" cx=".4" cy=".35" r=".75"><stop offset="0" stop-color="' + shade(f.skin, 1.2) + '"/><stop offset=".6" stop-color="' + f.skin + '"/><stop offset="1" stop-color="' + shade(f.skin, .6) + '"/></radialGradient>';
-  });
-  HELPERS.forEach((h, i) => {
-    d += '<linearGradient id="hs' + i + '" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="' + shade(h.skin, .65) + '"/><stop offset=".45" stop-color="' + shade(h.skin, 1.1) + '"/><stop offset="1" stop-color="' + shade(h.skin, .8) + '"/></linearGradient>';
-    d += '<linearGradient id="hsh' + i + '" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="' + shade(h.shirt, .6) + '"/><stop offset=".5" stop-color="' + shade(h.shirt, 1.15) + '"/><stop offset="1" stop-color="' + shade(h.shirt, .75) + '"/></linearGradient>';
-  });
-  $('defs').innerHTML = d;
-}
+  const CHARS = [
+    { id: 'rex',   name: 'REX',   tag: 'Powerlifter', skin: '#c99a74', hair: 'flattop', hairCol: '#2a2118', shorts: '#2a1a14', trim: '#2a1a14', rim: '#ffb26b', m0: 1.0 },
+    { id: 'kofi',  name: 'KOFI',  tag: 'Mass monster', skin: '#6e4129', hair: 'hightop', hairCol: '#16110e', beard: true, shorts: '#161616', trim: '#161616', rim: '#ff9a52', m0: 1.15 },
+    { id: 'dante', name: 'DANTE', tag: 'Old school',   skin: '#b5835a', hair: 'slick',  hairCol: '#1d1510', stache: true, shorts: '#1c2238', trim: '#1c2238', rim: '#ffc58a', m0: 1.05 },
+  ];
+  const SPOTTERS = [
+    { skin: '#a0785a', hair: 'short', hairCol: '#2a1c12', shirt: '#2c3238', shorts: '#1a1a1a', trim: '#1a1a1a' },
+    { skin: '#7a5038', hair: 'short', hairCol: '#120d0a', shirt: '#3a2a22', shorts: '#1a1a1a', trim: '#1a1a1a', cap: '#151515' },
+  ];
 
-function head(f, i, cx, cy) {
-  const sk = 'url(#dl' + i + ')';
-  let s = '<rect x="' + (cx - 24) + '" y="' + (cy - 26) + '" width="48" height="54" rx="22" fill="' + sk + '"/>';
-  s += '<ellipse cx="' + (cx - 25) + '" cy="' + cy + '" rx="5" ry="8" fill="' + f.skin + '"/><ellipse cx="' + (cx + 25) + '" cy="' + cy + '" rx="5" ry="8" fill="' + f.skin + '"/>';
-  if (f.hair === 'short') s += '<path d="M' + (cx - 25) + ' ' + (cy - 6) + ' Q' + (cx - 24) + ' ' + (cy - 38) + ' ' + cx + ' ' + (cy - 36) + ' Q' + (cx + 24) + ' ' + (cy - 38) + ' ' + (cx + 25) + ' ' + (cy - 6) + ' Q' + cx + ' ' + (cy - 20) + ' ' + (cx - 25) + ' ' + (cy - 6) + 'Z" fill="#1a1210"/>';
-  if (f.hair === 'wave') s += '<path d="M' + (cx - 26) + ' ' + (cy - 2) + ' Q' + (cx - 22) + ' ' + (cy - 44) + ' ' + (cx + 4) + ' ' + (cy - 38) + ' Q' + (cx + 28) + ' ' + (cy - 34) + ' ' + (cx + 26) + ' ' + (cy - 2) + ' Q' + cx + ' ' + (cy - 20) + ' ' + (cx - 26) + ' ' + (cy - 2) + 'Z" fill="#c9a443"/>';
-  if (f.hair === 'bald') s += '<path d="M' + (cx - 18) + ' ' + (cy + 14) + ' Q' + cx + ' ' + (cy + 34) + ' ' + (cx + 18) + ' ' + (cy + 14) + ' Q' + cx + ' ' + (cy + 22) + ' ' + (cx - 18) + ' ' + (cy + 14) + 'Z" fill="#150c08"/>';
-  s += '<path d="M' + (cx - 19) + ' ' + (cy - 9) + ' L' + (cx - 4) + ' ' + (cy - 4) + ' M' + (cx + 19) + ' ' + (cy - 9) + ' L' + (cx + 4) + ' ' + (cy - 4) + '" stroke="#150c08" stroke-width="4" stroke-linecap="round"/>';
-  s += '<ellipse cx="' + (cx - 10) + '" cy="' + (cy + 1) + '" rx="3.5" ry="2.4" fill="#fff"/><ellipse cx="' + (cx + 10) + '" cy="' + (cy + 1) + '" rx="3.5" ry="2.4" fill="#fff"/>';
-  s += '<circle cx="' + (cx - 9) + '" cy="' + (cy + 1) + '" r="1.6" fill="#150c08"/><circle cx="' + (cx + 11) + '" cy="' + (cy + 1) + '" r="1.6" fill="#150c08"/>';
-  s += '<path d="M' + cx + ' ' + (cy + 2) + ' L' + (cx - 3) + ' ' + (cy + 11) + ' L' + (cx + 3) + ' ' + (cy + 11) + '" stroke="' + f.dark + '" stroke-width="2" fill="none" stroke-linejoin="round"/>';
-  s += '<rect class="mouth" x="' + (cx - 9) + '" y="' + (cy + 15) + '" width="18" height="5" rx="2.5" fill="#2a0709" stroke="#fff" stroke-width=".8"/>';
-  return s;
-}
+  // =========================================================
+  // UTIL
+  // =========================================================
+  const $ = id => document.getElementById(id);
+  const lerp = (a, b, t) => a + (b - a) * t;
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  const ease = t => t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+  const load = k => { try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } };
+  const save = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} };
+  function shade(hex, amt) {
+    const n = parseInt(hex.slice(1), 16);
+    let r = n >> 16, g = (n >> 8) & 255, b = n & 255;
+    const f = amt < 0 ? 0 : 255, t = Math.abs(amt);
+    r = Math.round(lerp(r, f, t)); g = Math.round(lerp(g, f, t)); b = Math.round(lerp(b, f, t));
+    return `rgb(${r},${g},${b})`;
+  }
 
-function standing(f, i, armsDown) {
-  const sk = 'url(#sk' + i + ')', d = f.dark;
-  let s = '';
-  s += '<g class="mleg" style="transform-origin:150px 270px;transition:transform .6s">';
-  s += '<path d="M111 206 Q104 255 114 306 H147 Q152 255 147 206Z" fill="' + sk + '"/><path d="M153 206 Q148 255 153 306 H186 Q196 255 189 206Z" fill="' + sk + '"/>';
-  s += '<path d="M114 228 Q108 262 120 296 M186 228 Q192 262 180 296" stroke="' + d + '" stroke-width="3" fill="none" opacity=".6" stroke-linecap="round"/>';
-  s += '<path d="M116 306 Q112 326 120 342 H144 Q150 326 146 306Z M154 306 Q150 326 156 342 H180 Q188 326 184 306Z" fill="' + sk + '"/>';
-  s += '<path d="M118 312 Q124 322 118 336 M182 312 Q176 322 182 336" stroke="' + d + '" stroke-width="3" fill="none" opacity=".6"/>';
-  s += '<ellipse cx="130" cy="346" rx="24" ry="8" fill="#0b0b0c"/><ellipse cx="170" cy="346" rx="24" ry="8" fill="#0b0b0c"/>';
-  s += '</g>';
-  s += '<path d="M90 100 Q150 84 210 100 L190 210 Q150 222 110 210Z" fill="' + sk + '"/>';
-  s += '<path d="M116 92 Q150 66 184 92 L160 104 Q150 96 140 104Z" fill="' + d + '" opacity=".4"/>';
-  s += '<g class="mpec" style="transform-origin:150px 130px;transition:transform .6s">';
-  s += '<path d="M150 114 Q122 104 98 124 Q104 160 150 158Z M150 114 Q178 104 202 124 Q196 160 150 158Z" fill="' + sk + '" stroke="' + d + '" stroke-width="1.5" stroke-opacity=".6"/>';
-  s += '<path class="mdef" d="M100 144 Q126 168 150 158 Q174 168 200 144" stroke="' + d + '" stroke-width="4" fill="none" stroke-linecap="round" opacity=".75"/>';
-  s += '<ellipse cx="126" cy="128" rx="15" ry="8" fill="#fff" opacity=".14"/><ellipse cx="174" cy="128" rx="15" ry="8" fill="#fff" opacity=".14"/>';
-  s += '</g>';
-  s += '<rect x="138" y="160" width="24" height="46" fill="' + d + '" opacity=".4"/>';
-  [[139,163],[151,163],[139,177],[151,177],[140,191],[151,191]].forEach(p => { s += '<rect x="' + p[0] + '" y="' + p[1] + '" width="10" height="11" rx="4" fill="' + sk + '" stroke="' + d + '" stroke-opacity=".35"/>'; });
-  s += '<path d="M104 150 l10 6 M102 163 l11 6 M104 176 l10 6 M196 150 l-10 6 M198 163 l-11 6 M196 176 l-10 6" stroke="' + d + '" stroke-width="2.5" opacity=".55" stroke-linecap="round"/>';
-  s += '<path d="M108 204 H192 L196 244 L150 234 L104 244Z" fill="' + f.trunks + '"/><rect x="108" y="204" width="84" height="7" fill="#000" opacity=".35"/><path d="M118 216 L126 240 M182 216 L174 240" stroke="#000" stroke-opacity=".25" stroke-width="3"/>';
-  s += '<circle class="mdelt" style="transform-origin:93px 114px;transition:transform .6s" cx="93" cy="114" r="23" fill="url(#dl' + i + ')"/><circle class="mdelt" style="transform-origin:207px 114px;transition:transform .6s" cx="207" cy="114" r="23" fill="url(#dl' + i + ')"/>';
-  s += '<path d="M90 106 Q94 124 100 128 M210 106 Q206 124 200 128" stroke="' + d + '" stroke-width="2.5" fill="none" opacity=".6"/>';
-  s += '<rect x="136" y="74" width="28" height="28" fill="' + d + '"/><path d="M136 82 Q150 98 164 82" fill="none" stroke="#000" stroke-opacity=".25" stroke-width="3"/>';
-  s += head(f, i, 150, 56);
-  if (armsDown) {
-    [[94,114,84,200],[206,114,216,200]].forEach(a => {
-      s += '<path d="M' + a[0] + ' ' + a[1] + ' L' + a[2] + ' ' + a[3] + '" stroke="' + f.skin + '" stroke-width="22" stroke-linecap="round"/><path d="M' + (a[0] - 3) + ' ' + a[1] + ' L' + (a[2] - 3) + ' ' + a[3] + '" stroke="#fff" opacity=".2" stroke-width="7" stroke-linecap="round"/>';
+  // =========================================================
+  // CANVAS + COORDS (scene is built in real inches)
+  // =========================================================
+  const canvas = $('c'); let ctx = canvas.getContext('2d');
+  const stage = $('stage'), banner = $('banner');
+  let W = 0, H = 0, DPR = 1, u = 4, floorY = 0, cxS = 0;
+  const X = x => cxS + x * u;
+  const Y = y => floorY - y * u;
+  const bgCanvas = document.createElement('canvas');
+  const figC = document.createElement('canvas'), rimC = document.createElement('canvas');
+
+  function resize() {
+    DPR = Math.min(window.devicePixelRatio || 1, 2);
+    const r = stage.getBoundingClientRect();
+    W = r.width; H = r.height;
+    canvas.width = W * DPR; canvas.height = H * DPR;
+    floorY = H - Math.max(16, H * 0.06);
+    u = Math.min(W * 0.98 / 88, (floorY - 6) / 96);
+    cxS = W / 2;
+    const cf = $('confetti');
+    cf.width = innerWidth * DPR; cf.height = innerHeight * DPR;
+    renderBackground();
+  }
+  addEventListener('resize', resize);
+
+  // =========================================================
+  // AUDIO / HAPTICS
+  // =========================================================
+  let ac;
+  function audio() { if (!ac) { try { ac = new (window.AudioContext || window.webkitAudioContext)(); } catch {} } if (ac && ac.state === 'suspended') ac.resume(); return ac; }
+  function tone(freq, dur, type = 'square', vol = 0.06, slide = 0) {
+    const a = audio(); if (!a) return;
+    const o = a.createOscillator(), g = a.createGain();
+    o.type = type; o.frequency.value = freq;
+    if (slide) o.frequency.exponentialRampToValueAtTime(Math.max(20, freq * slide), a.currentTime + dur);
+    g.gain.setValueAtTime(vol, a.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.0001, a.currentTime + dur);
+    o.connect(g).connect(a.destination); o.start(); o.stop(a.currentTime + dur);
+  }
+  const clank = () => { tone(150, .09, 'square', .06, .5); tone(1100, .05, 'triangle', .025); };
+  const buzz = ms => { try { navigator.vibrate && navigator.vibrate(ms); } catch {} };
+
+  // =========================================================
+  // GAME STATE
+  // =========================================================
+  let charIdx = 0, exIdx = 0, state = 'menu';
+  let G = null;
+
+  function newGame() {
+    const m0 = CHARS[charIdx].m0;
+    G = {
+      level: 0, ex: EXERCISES[exIdx], plates: EXERCISES[exIdx].start,
+      reps: 0, levelReps: 0, prs: 0, maxWeight: 0,
+      progress: 0, phase: 'push', t: 0, from: 0,
+      started: false, lastTap: 0, bend: 0, shake: 0,
+      m: m0, mTarget: m0, pops: [], snap: null, fade: 0,
+      load: null, creakAt: 0, spot: 0,
+    };
+    G.maxWeight = weight();
+  }
+  const weight = () => BAR_LB + G.plates * 2 * PLATE_LB;
+  const now = () => performance.now() / 1000;
+
+  function startGame() {
+    audio();
+    newGame();
+    state = 'play';
+    $('startScreen').classList.remove('show');
+    $('endScreen').classList.remove('show');
+    setHint('TAP TO LIFT', 'pulse');
+    updateHud();
+    showBanner(G.ex.name.toUpperCase(), `Level 1 · ${weight()} lb`);
+  }
+
+  let bannerTimer;
+  function showBanner(text, small, ms = 1300, cls = '') {
+    banner.innerHTML = text + (small ? `<small>${small}</small>` : '');
+    banner.className = 'show ' + cls;
+    clearTimeout(bannerTimer);
+    bannerTimer = setTimeout(() => banner.className = cls, ms);
+  }
+  function setHint(text, cls) {
+    const h = $('tapHint'); if (h.textContent !== text) h.textContent = text; h.className = cls || '';
+  }
+
+  function updateHud() {
+    $('liftName').innerHTML = `LVL ${G.level + 1} · <span>${G.ex.name}</span>`;
+    $('weight').innerHTML = `${weight()}<small>LB</small>`;
+    $('repCount').textContent = G.reps;
+    $('plateIn').textContent = REPS_PER_LOAD - (G.levelReps % REPS_PER_LOAD);
+    $('plateLbl').textContent = G.plates >= MAX_PLATES ? 'Re-rack in' : 'Plates in';
+    $('prIn').textContent = PR_EVERY - (G.reps % PR_EVERY);
+    $('prMeter').firstElementChild.style.width = ((G.reps % PR_EVERY) / PR_EVERY * 100) + '%';
+    $('prCountLbl').textContent = `PRs ${G.prs}`;
+  }
+
+  // =========================================================
+  // INPUT — every tap is one full rep
+  // =========================================================
+  function tap() {
+    if (state !== 'play' || !G) return;
+    audio();
+    if (G.phase !== 'push' && G.phase !== 'rep') return;
+    G.started = true;
+    G.lastTap = now();
+    G.bend = Math.max(0, G.bend - 0.4);
+    G.shake = 2;
+    G.phase = 'rep'; G.t = 0; G.from = G.progress;
+    completeRep();
+  }
+  $('app').addEventListener('pointerdown', e => { e.preventDefault(); tap(); }, { passive: false });
+  addEventListener('keydown', e => { if ((e.code === 'Space' || e.code === 'Enter') && !e.repeat) { e.preventDefault(); if (state === 'play') tap(); } });
+
+  // =========================================================
+  // GAME FLOW
+  // =========================================================
+  function completeRep() {
+    G.reps++; G.levelReps++;
+    clank(); buzz(15);
+    G.pops.push({ text: '+1', y: 0, life: 1 });
+
+    let isPR = false;
+    if (G.reps % PR_EVERY === 0) {
+      isPR = true; G.prs++;
+      G.mTarget = Math.min(2.4, CHARS[charIdx].m0 + G.prs * 0.16);
+      showBanner('NEW PR', `${G.reps} reps · ${weight()} lb · muscles up`, 1800, 'pr');
+      fanfare(); confettiBurst();
+    }
+    if (G.levelReps % REPS_PER_LOAD === 0) {
+      if (G.plates < MAX_PLATES) beginLoad(isPR);
+      else beginRerack(isPR);
+    }
+    updateHud();
+  }
+
+  function beginLoad(delayBanner) {
+    G.phase = 'load'; G.t = 0; G.from = G.progress; G.load = {};
+    setHint('RE-RACK · LOAD UP', '');
+    setTimeout(() => { if (state === 'play') showBanner(`+${PLATE_LB * 2} LB`, `${weight()} lb on the bar`); }, LOAD_T.slideR * 1000 + 50);
+  }
+
+  function beginRerack(delayBanner) {
+    G.phase = 'rerack'; G.t = 0; G.from = G.progress;
+    setHint('RE-RACKED', '');
+    tone(110, .25, 'square', .06, .6);
+    setTimeout(() => { if (state === 'play') showBanner('RE-RACKED', 'Level up'); }, delayBanner ? 1500 : 200);
+  }
+
+  function nextLevel() {
+    G.level++;
+    G.plates = G.ex.start; G.levelReps = 0;
+    G.progress = G.ex.restP; G.phase = 'lower'; G.t = 0; G.from = G.ex.restP;
+    G.lastTap = now(); G.bend = 0;
+    updateHud();
+    showBanner(G.ex.name.toUpperCase(), `Level ${G.level + 1} · ${weight()} lb`);
+  }
+
+  function spotterRack() {
+    G.phase = 'spotted'; G.t = 0; G.from = G.progress; G.spot = 1;
+    tone(140, .2, 'square', .06, .5); buzz([80, 40, 120]);
+    setHint('SPOTTER RE-RACKED IT', 'warn');
+    showBanner('RACKED', 'Your spotter took it', 1400);
+  }
+
+  function snapBar() {
+    G.phase = 'snap'; G.t = 0;
+    G.snap = { a: 0, fall: 0, v: 0 };
+    tone(80, .7, 'sawtooth', .1, .2); tone(2600, .15, 'square', .05, .3);
+    buzz([150, 60, 250]);
+    G.shake = 16;
+    setHint('SNAP', 'warn');
+    setTimeout(endGame, 1500);
+  }
+
+  function endGame() {
+    state = 'end';
+    const key = 'irontap_best_' + G.ex.id;
+    const prev = load(key) || { reps: 0 };
+    const better = G.reps > prev.reps;
+    if (better) save(key, { reps: G.reps, weight: G.maxWeight, level: G.level + 1 });
+    $('endStats').innerHTML = [
+      [G.reps, 'Total reps'], [G.prs, 'PRs hit'],
+      [G.maxWeight + ' lb', 'Heaviest'], [G.level + 1, 'Level reached'],
+    ].map(([v, l]) => `<div class="stat"><b>${v}</b><span>${l}</span></div>`).join('');
+    $('endNote').textContent = 'Your spotter re-racked it. ' + (better && G.reps > 0 ? 'NEW ALL-TIME BEST' : (prev.reps ? `Best: ${prev.reps} reps` : ''));
+    $('endScreen').classList.add('show');
+    refreshBest();
+  }
+
+  function fanfare() {
+    [392, 523, 659, 784].forEach((f, i) => setTimeout(() => tone(f, .3, 'sawtooth', .035), i * 110));
+    buzz([60, 50, 60, 50, 180]);
+  }
+
+  // =========================================================
+  // UPDATE
+  // =========================================================
+  function update(dt) {
+    if (!G) return;
+    G.m += (G.mTarget - G.m) * Math.min(1, dt * 2.5);
+    G.shake = Math.max(0, G.shake - dt * 18);
+    if (state !== 'play') return;
+
+    const ph = G.phase;
+    if (ph === 'push' || ph === 'rep') {
+      if (ph === 'rep') {
+        G.t += dt;
+        G.progress = G.t < UP ? lerp(G.from, 1, G.t / UP) : lerp(1, 0, clamp((G.t - UP) / DOWN, 0, 1));
+        if (G.t >= UP + DOWN) { G.phase = 'push'; G.progress = 0; }
+      }
+      if (G.started) {
+        const idle = now() - G.lastTap;
+        // stop tapping → spotter runs in; if he gets to the bar, he re-racks it and the set is over
+        if (idle > graceFor(G.reps)) {
+          G.spot = Math.min(1, G.spot + dt / bendTimeFor(G.reps));
+          if (now() - G.creakAt > .35) { G.creakAt = now(); tone(220, .08, 'square', .04); buzz(25); }
+        } else {
+          G.spot = Math.max(0, G.spot - dt / .45);
+        }
+        if (G.spot >= 1) spotterRack();
+      }
+      if (G.phase === 'push' || G.phase === 'rep') {
+        if (!G.started) setHint('TAP TO LIFT', 'pulse');
+        else if (G.spot > 0.02) setHint('SPOTTER! KEEP TAPPING', 'warn');
+        else setHint('TAP · TAP · TAP', '');
+      }
+    } else if (ph === 'lower') {
+      G.t += dt;
+      G.progress = lerp(G.from, 0, clamp(G.t / .35, 0, 1));
+      G.bend = Math.max(0, G.bend - dt * 3);
+      if (G.t >= .35) { G.phase = 'push'; G.progress = 0; G.lastTap = now(); }
+    } else if (ph === 'load') {
+      G.t += dt;
+      G.bend = Math.max(0, G.bend - dt * 3);
+      const T = LOAD_T, L = G.load;
+      if (G.t >= T.rack && !L.racked) { L.racked = true; tone(120, .12, 'square', .06, .6); buzz(30); }
+      if (G.t >= T.slideL && !L.left) { L.left = true; clank(); buzz(30); }
+      if (G.t >= T.slideR && !L.right) { L.right = true; G.plates++; G.maxWeight = Math.max(G.maxWeight, weight()); clank(); buzz(40); updateHud(); }
+      if (G.t >= T.unrack) { G.phase = 'lower'; G.t = 0; G.from = G.ex.restP; G.progress = G.ex.restP; G.load = null; G.lastTap = now(); }
+    } else if (ph === 'rerack') {
+      G.t += dt;
+      G.progress = lerp(G.from, G.ex.restP, clamp(G.t / .4, 0, 1));
+      G.bend = Math.max(0, G.bend - dt * 3);
+      G.fade = clamp((G.t - 1.3) / .4, 0, 1);
+      if (G.t >= 1.7) nextLevel();
+    } else if (ph === 'spotted') {
+      G.t += dt;
+      G.progress = lerp(G.from, G.ex.restP, ease(clamp(G.t / .7, 0, 1)));
+      if (G.t >= .8 && !G.racked) { G.racked = true; clank(); buzz(60); }
+      if (G.t >= 1.6 && state === 'play') endGame();
+    } else if (ph === 'snap') {
+      G.t += dt;
+      const s = G.snap;
+      s.a = Math.min(1.15, s.a + dt * 3.2);
+      s.v += 900 * dt; s.fall += s.v * dt;
+    }
+    if (ph !== 'rerack') G.fade = Math.max(0, G.fade - dt * 2.5);
+    if (ph !== 'push' && ph !== 'rep' && ph !== 'spotted') G.spot = Math.max(0, G.spot - dt / .45);
+
+    $('stressMeter').firstElementChild.style.width = (G.spot * 100) + '%';
+    $('stressLbl').textContent = G.spot > .6 ? 'Spotter grabbing the bar' : G.spot > .02 ? 'Spotter coming' : `Tap within ${graceFor(G.reps).toFixed(1)}s`;
+
+    for (const p of G.pops) { p.y += 50 * dt; p.life -= dt * 1.6; }
+    G.pops = G.pops.filter(p => p.life > 0);
+  }
+
+  // =========================================================
+  // BACKGROUND — dark hardcore gym under a single spotlight
+  // =========================================================
+  function rng(seed) { return () => (seed = (seed * 16807) % 2147483647) / 2147483647; }
+
+  function renderBackground() {
+    bgCanvas.width = W * DPR; bgCanvas.height = H * DPR;
+    const b = bgCanvas.getContext('2d');
+    b.setTransform(DPR, 0, 0, DPR, 0, 0);
+    const R = rng(11);
+
+    b.fillStyle = '#070605'; b.fillRect(0, 0, W, H);
+
+    // faint brick texture in the dark
+    const bw = 30, bh = 12;
+    for (let row = 0, y = 0; y < floorY; row++, y += bh) {
+      for (let x = (row % 2) * -bw / 2; x < W; x += bw) {
+        b.fillStyle = `rgba(120,70,50,${0.035 + R() * 0.03})`;
+        b.fillRect(x + 1, y + 1, bw - 2, bh - 2);
+      }
+    }
+
+    // background equipment silhouettes
+    const eq = '#0c0b0a', eqRim = 'rgba(255,170,100,.10)';
+    const sil = (x, y, w, h) => { b.fillStyle = eq; b.fillRect(x, y, w, h); b.fillStyle = eqRim; b.fillRect(x, y, w, 1); };
+    // dumbbell rack along the back wall
+    const rTop = Y(26), rMid = Y(14);
+    sil(0, rTop, W, 3); sil(0, rMid, W, 3);
+    for (let x = 6; x < W; x += 3 * u + 10) { sil(x, rTop, 2, floorY - rTop); }
+    const dh = Math.max(6, (rMid - rTop) * .62);
+    for (let x = 4, i = 0; x < W; x += dh * 2.4, i++) {
+      for (const yy of [rTop - dh * .55, rMid - dh * .55]) {
+        const h = dh * (0.8 + (i % 4) * .07);
+        b.fillStyle = eq; b.fillRect(x, yy + dh * .5 - 1, h * 1.9, 2);
+        b.fillRect(x, yy + (dh - h) / 2, h * .5, h); b.fillRect(x + h * 1.4, yy + (dh - h) / 2, h * .5, h);
+        b.fillStyle = eqRim; b.fillRect(x, yy + (dh - h) / 2, h * .5, 1); b.fillRect(x + h * 1.4, yy + (dh - h) / 2, h * .5, 1);
+      }
+    }
+    // cable machine + far racks at the edges
+    sil(4, Y(92), 5, 92 * u); sil(4 + 22 * u, Y(92), 5, 92 * u); sil(4, Y(92), 22 * u + 5, 4);
+    sil(W - 9, Y(92), 5, 92 * u); sil(W - 9 - 22 * u, Y(92), 5, 92 * u); sil(W - 9 - 22 * u, Y(92), 22 * u + 5, 4);
+
+    // neon sign
+    const sy = Math.max(26, Y(96) + 6);
+    const fs = Math.min(34, W * 0.075);
+    b.textAlign = 'center'; b.textBaseline = 'middle';
+    b.font = `700 ${fs}px Oswald, sans-serif`;
+    b.save();
+    b.shadowColor = 'rgba(255,60,40,.9)'; b.shadowBlur = 22;
+    b.fillStyle = '#ff5a43';
+    for (let i = 0; i < 2; i++) b.fillText('IRON TAP GYM', W / 2, sy);
+    b.restore();
+    b.fillStyle = '#ffd6c8'; b.globalAlpha = .55; b.fillText('IRON TAP GYM', W / 2, sy); b.globalAlpha = 1;
+    b.font = `700 ${Math.max(8, fs * .3)}px Inter, sans-serif`;
+    b.fillStyle = 'rgba(255,120,90,.55)';
+    b.fillText('H A R D C O R E   ·   E S T  1 9 7 9', W / 2, sy + fs * .75);
+
+    // floor: dark glossy rubber + wooden platform
+    let g = b.createLinearGradient(0, floorY, 0, H);
+    g.addColorStop(0, '#0d0b0a'); g.addColorStop(1, '#050404');
+    b.fillStyle = g; b.fillRect(0, floorY, W, H - floorY);
+    const pw = Math.min(W * .9, 96 * u);
+    b.fillStyle = 'rgba(110,70,40,.22)'; b.fillRect(W / 2 - pw / 2, floorY, pw, H - floorY);
+    b.fillStyle = 'rgba(0,0,0,.35)';
+    for (let x = W / 2 - pw / 2; x < W / 2 + pw / 2; x += 12) b.fillRect(x, floorY, 1, H - floorY);
+    b.fillStyle = 'rgba(255,170,100,.18)'; b.fillRect(0, floorY, W, 1);
+
+    // spotlight cone from above
+    b.save();
+    b.globalCompositeOperation = 'lighter';
+    const top = 0, coneTop = W * 0.08, coneBot = Math.min(W * .62, 70 * u);
+    g = b.createLinearGradient(0, top, 0, floorY);
+    g.addColorStop(0, 'rgba(255,200,140,.16)'); g.addColorStop(1, 'rgba(255,200,140,.05)');
+    b.fillStyle = g;
+    b.beginPath(); b.moveTo(W / 2 - coneTop, top); b.lineTo(W / 2 + coneTop, top);
+    b.lineTo(W / 2 + coneBot, floorY); b.lineTo(W / 2 - coneBot, floorY); b.closePath(); b.fill();
+    // light pool on floor
+    g = b.createRadialGradient(W / 2, floorY + 4, 2, W / 2, floorY + 4, coneBot * 1.1);
+    g.addColorStop(0, 'rgba(255,190,130,.32)'); g.addColorStop(1, 'rgba(255,190,130,0)');
+    b.fillStyle = g;
+    b.beginPath(); b.ellipse(W / 2, floorY + 4, coneBot * 1.1, (H - floorY) * 1.3 + 10, 0, 0, 7); b.fill();
+    // lamp
+    g = b.createRadialGradient(W / 2, 0, 1, W / 2, 0, 60);
+    g.addColorStop(0, 'rgba(255,230,190,.6)'); g.addColorStop(1, 'rgba(255,230,190,0)');
+    b.fillStyle = g; b.fillRect(W / 2 - 60, 0, 120, 60);
+    b.restore();
+
+    // cool back-light wash from the left
+    g = b.createLinearGradient(0, 0, W * .5, 0);
+    g.addColorStop(0, 'rgba(90,140,220,.07)'); g.addColorStop(1, 'rgba(90,140,220,0)');
+    b.fillStyle = g; b.fillRect(0, 0, W, floorY);
+
+    // vignette
+    g = b.createRadialGradient(W / 2, H * .55, Math.min(W, H) * .25, W / 2, H * .55, Math.max(W, H) * .8);
+    g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(0,0,0,.75)');
+    b.fillStyle = g; b.fillRect(0, 0, W, H);
+  }
+
+  // drifting haze/dust in the light
+  const motes = Array.from({ length: 45 }, () => ({ x: Math.random(), y: Math.random(), s: .3 + Math.random() * .7, v: .01 + Math.random() * .02 }));
+  function drawMotes(dt) {
+    ctx.save(); ctx.globalCompositeOperation = 'lighter';
+    for (const m of motes) {
+      m.y -= m.v * dt; m.x += Math.sin(m.y * 20) * .0006;
+      if (m.y < 0) { m.y = 1; m.x = Math.random(); }
+      const x = W / 2 + (m.x - .5) * W * .7 * (0.3 + m.y), y = m.y * floorY;
+      ctx.fillStyle = `rgba(255,210,160,${.18 * m.s})`;
+      ctx.beginPath(); ctx.arc(x, y, 1 + m.s, 0, 7); ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  // =========================================================
+  // DRAW PRIMITIVES
+  // =========================================================
+  function P(pt) { return { x: X(pt.x), y: Y(pt.y) }; }
+  function capsule(a, b, ra, rb, color) {
+    const dx = b.x - a.x, dy = b.y - a.y, L = Math.hypot(dx, dy) || 1;
+    const nx = -dy / L, ny = dx / L;
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.moveTo(a.x + nx * ra, a.y + ny * ra); ctx.lineTo(b.x + nx * rb, b.y + ny * rb);
+    ctx.lineTo(b.x - nx * rb, b.y - ny * rb); ctx.lineTo(a.x - nx * ra, a.y - ny * ra); ctx.closePath(); ctx.fill();
+    ctx.beginPath(); ctx.arc(a.x, a.y, ra, 0, 7); ctx.fill();
+    ctx.beginPath(); ctx.arc(b.x, b.y, rb, 0, 7); ctx.fill();
+  }
+  function bulge(a, b, t, lenF, rad, color, offset = 0) {
+    const dx = b.x - a.x, dy = b.y - a.y, L = Math.hypot(dx, dy) || 1;
+    const nx = -dy / L, ny = dx / L;
+    ctx.save();
+    ctx.translate(a.x + dx * t + nx * offset, a.y + dy * t + ny * offset);
+    ctx.rotate(Math.atan2(dy, dx));
+    ctx.fillStyle = color;
+    ctx.beginPath(); ctx.ellipse(0, 0, L * lenF / 2, rad, 0, 0, 7); ctx.fill();
+    ctx.restore();
+  }
+  function rrect(x, y, w, h, r) {
+    ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+  }
+
+  // =========================================================
+  // LIGHTING: draw anything as a low-key silhouette with rim light
+  // =========================================================
+  function lit(fn, opt = {}) {
+    const rim = opt.rim || '#ffb26b', cool = opt.cool || 'rgba(120,170,255,1)';
+    const dark = opt.dark ?? .84, glow = opt.glow ?? 12, alpha = opt.alpha ?? 1;
+    const main = ctx, tw = main.canvas.width, th = main.canvas.height, d = opt.dpr || DPR;
+    if (figC.width !== tw || figC.height !== th) { figC.width = rimC.width = tw; figC.height = rimC.height = th; }
+    const f = figC.getContext('2d'), r = rimC.getContext('2d');
+    f.setTransform(1, 0, 0, 1, 0, 0); f.globalCompositeOperation = 'source-over'; f.clearRect(0, 0, tw, th);
+    f.setTransform(main.getTransform());
+    ctx = f; fn(); ctx = main;
+    f.setTransform(1, 0, 0, 1, 0, 0);
+
+    // rim mask
+    r.setTransform(1, 0, 0, 1, 0, 0); r.globalCompositeOperation = 'source-over'; r.clearRect(0, 0, tw, th);
+    r.drawImage(figC, 0, 0);
+    r.globalCompositeOperation = 'source-in';
+
+    // body: deep shadow with faint muscle definition + warm top light
+    f.globalCompositeOperation = 'source-atop';
+    f.fillStyle = `rgba(9,7,6,${dark})`; f.fillRect(0, 0, tw, th);
+    const g = f.createLinearGradient(0, 0, 0, th);
+    g.addColorStop(0, 'rgba(255,170,100,.22)'); g.addColorStop(.55, 'rgba(255,170,100,.05)'); g.addColorStop(1, 'rgba(0,0,0,0)');
+    f.fillStyle = g; f.fillRect(0, 0, tw, th);
+    f.globalCompositeOperation = 'source-over';
+
+    main.save();
+    main.setTransform(1, 0, 0, 1, 0, 0);
+    main.globalAlpha = alpha;
+    // cool back-light from the left
+    r.fillStyle = cool; r.fillRect(0, 0, tw, th);
+    main.globalAlpha = alpha * .55;
+    main.drawImage(rimC, -2 * d, -.5 * d);
+    // warm key light from above
+    r.fillStyle = rim; r.fillRect(0, 0, tw, th);
+    main.globalAlpha = alpha;
+    main.shadowColor = rim; main.shadowBlur = glow * d;
+    main.drawImage(rimC, 0, -2.2 * d);
+    main.shadowBlur = 0;
+    main.drawImage(rimC, .8 * d, -1.6 * d);
+    main.drawImage(figC, 0, 0);
+    main.restore();
+  }
+
+  // =========================================================
+  // BODY GEOMETRY
+  // =========================================================
+  function drawLower(J, ch, m) {
+    const skin = ch.skin, dk = shade(skin, -0.35), hl = shade(skin, 0.15);
+    for (let s = 0; s < 2; s++) {
+      const hip = P(J.hip[s]), kn = P(J.kn[s]), ft = P(J.ft[s]);
+      capsule(kn, ft, 2.0 * m * u, 1.2 * u * Math.sqrt(m), skin);
+      bulge(kn, ft, .3, .55, 2.5 * m * u, dk);
+      bulge(kn, ft, .3, .5, 2.1 * m * u, skin);
+      capsule(hip, kn, 3.5 * m * u, 2.2 * m * u, skin);
+      bulge(hip, kn, .55, .7, 3.9 * m * u, dk);
+      bulge(hip, kn, .52, .62, 3.4 * m * u, skin);
+      bulge(hip, kn, .62, .35, 1.3 * m * u, hl, (s ? -1 : 1) * u);
+      ctx.fillStyle = '#222'; rrect(ft.x - 2.6 * u, ft.y - 2.4 * u, 5.2 * u, 2.4 * u, u); ctx.fill();
+      const mid = { x: lerp(hip.x, kn.x, .5), y: lerp(hip.y, kn.y, .5) };
+      capsule(hip, mid, 3.9 * m * u, 3.6 * m * u, ch.shorts);
+    }
+  }
+
+  function torsoGeom(J, m) {
+    const shL = J.sh[0], shR = J.sh[1], hipL = J.hip[0], hipR = J.hip[1];
+    return {
+      shL, shR, cx: (shL.x + shR.x) / 2, hcx: (hipL.x + hipR.x) / 2,
+      shY: (shL.y + shR.y) / 2, hipY: (hipL.y + hipR.y) / 2,
+      waist: 5.2 + (m - 1) * 0.9, len: (shL.y + shR.y) / 2 - (hipL.y + hipR.y) / 2,
+    };
+  }
+
+  function drawTorso(J, ch, m) {
+    const T = torsoGeom(J, m);
+    const skin = ch.skin, dk = shade(skin, -0.35), hl = shade(skin, 0.15);
+    const at = f => ({ x: lerp(T.cx, T.hcx, f), y: lerp(T.shY, T.hipY, f) });
+    const wp = at(.72);
+    ctx.fillStyle = ch.shirt || skin;
+    ctx.beginPath();
+    ctx.moveTo(X(T.shL.x - 1.2), Y(T.shL.y + .6));
+    ctx.quadraticCurveTo(X(T.shL.x - 2.2 * m), Y(lerp(T.shY, T.hipY, .3)), X(wp.x - T.waist), Y(wp.y));
+    ctx.lineTo(X(T.hcx - 6), Y(T.hipY - 1.2));
+    ctx.lineTo(X(T.hcx + 6), Y(T.hipY - 1.2));
+    ctx.lineTo(X(wp.x + T.waist), Y(wp.y));
+    ctx.quadraticCurveTo(X(T.shR.x + 2.2 * m), Y(lerp(T.shY, T.hipY, .3)), X(T.shR.x + 1.2), Y(T.shR.y + .6));
+    ctx.closePath(); ctx.fill();
+
+    if (!ch.shirt) {
+      const pecY = at(.2), pw = Math.abs(T.shR.x - T.shL.x) * 0.25, ph = Math.max(1.6, Math.abs(T.len) * 0.16) * (0.85 + 0.25 * m);
+      for (const s of [-1, 1]) {
+        ctx.fillStyle = dk; ctx.beginPath(); ctx.ellipse(X(pecY.x + s * pw), Y(pecY.y) + .6 * u, pw * u * 1.05, ph * u * 1.05, 0, 0, 7); ctx.fill();
+        ctx.fillStyle = skin; ctx.beginPath(); ctx.ellipse(X(pecY.x + s * pw), Y(pecY.y), pw * u, ph * u, 0, 0, 7); ctx.fill();
+        ctx.fillStyle = hl; ctx.beginPath(); ctx.ellipse(X(pecY.x + s * pw * 1.1), Y(pecY.y) - ph * u * .4, pw * u * .55, ph * u * .3, 0, 0, 7); ctx.fill();
+      }
+      const aw = 1.6 * (0.8 + 0.2 * m), ah = Math.max(.8, Math.abs(T.len) * 0.085);
+      for (const [col, ins] of [[dk, 0], [skin, 1]]) {
+        ctx.fillStyle = col;
+        for (let r = 0; r < 3; r++) {
+          const p = at(.42 + r * .12);
+          for (const s of [-1, 1]) { rrect(X(p.x + s * (aw / 2 + .25)) - aw * u / 2 + ins, Y(p.y) - ah * u / 2 + ins, aw * u - ins * 2, ah * u - ins * 2, ah * u * .38); ctx.fill(); }
+        }
+      }
+    }
+    const bp = at(.86);
+    ctx.fillStyle = '#2a1d12';
+    ctx.fillRect(X(bp.x - T.waist - .6), Y(bp.y + 1.6), (T.waist * 2 + 1.2) * u, Math.max(3, 3.2 * u));
+    ctx.fillStyle = ch.shorts; ctx.fillRect(X(T.hcx - 6.2), Y(T.hipY + .2), 12.4 * u, 2.2 * u);
+
+    const nb = at(-.02);
+    ctx.fillStyle = ch.shirt ? skin : dk;
+    ctx.beginPath();
+    ctx.moveTo(X(T.shL.x + .5), Y(T.shL.y + .4));
+    ctx.quadraticCurveTo(X(nb.x - 2), Y(nb.y + 3.5 * m), X(nb.x - 1.6), Y(nb.y + 5));
+    ctx.lineTo(X(nb.x + 1.6), Y(nb.y + 5));
+    ctx.quadraticCurveTo(X(nb.x + 2), Y(nb.y + 3.5 * m), X(T.shR.x - .5), Y(T.shR.y + .4));
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle = skin;
+    ctx.fillRect(X(nb.x - 1.9 - .35 * m), Y(nb.y + 6), (3.8 + .7 * m) * u, 6 * u);
+  }
+
+  function drawArms(J, ch, m) {
+    const skin = ch.skin, dk = shade(skin, -0.35), hl = shade(skin, 0.18);
+    for (let s = 0; s < 2; s++) {
+      const sh = P(J.sh[s]), el = P(J.el[s]), ha = P(J.ha[s]);
+      capsule(el, ha, 1.9 * m * u, 1.25 * u * Math.sqrt(m), skin);
+      bulge(el, ha, .3, .55, 2.3 * m * u, skin);
+      capsule(sh, el, 2.2 * m * u, 1.8 * m * u, skin);
+      bulge(sh, el, .55, .7, 2.9 * m * u, dk);
+      bulge(sh, el, .52, .62, 2.55 * m * u, skin);
+      bulge(sh, el, .5, .35, 1.0 * m * u, hl, (s ? 1 : -1) * .8 * u);
+      if (ch.shirt) bulge(sh, el, .15, .5, 2.8 * m * u, ch.shirt);
+      ctx.fillStyle = ch.shirt || skin;
+      ctx.beginPath(); ctx.arc(sh.x, sh.y, 3.1 * m * u, 0, 7); ctx.fill();
+      if (!ch.shirt) { ctx.fillStyle = hl; ctx.beginPath(); ctx.arc(sh.x + (s ? 1 : -1) * .6 * u, sh.y - 1.1 * m * u, 1.1 * m * u, 0, 7); ctx.fill(); }
+      ctx.fillStyle = skin; ctx.beginPath(); ctx.arc(ha.x, ha.y, 1.7 * u, 0, 7); ctx.fill();
+    }
+  }
+
+  // Heads read by their outline: hair shape, beard, jaw
+  function drawHead(J, ch) {
+    const c = P(J.head), r = 4.7 * u;
+    ctx.fillStyle = ch.skin;
+    ctx.beginPath(); ctx.arc(c.x - r * .98, c.y + r * .05, r * .22, 0, 7); ctx.arc(c.x + r * .98, c.y + r * .05, r * .22, 0, 7); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(c.x, c.y, r * .95, r * 1.05, 0, 0, 7); ctx.fill();
+    rrect(c.x - r * .84, c.y, r * 1.68, r * .98, r * .42); ctx.fill();
+    ctx.fillStyle = ch.hairCol;
+    if (ch.hair === 'flattop') {
+      rrect(c.x - r * .92, c.y - r * 1.38, r * 1.84, r * .85, r * .1); ctx.fill();
+    } else if (ch.hair === 'hightop') {
+      rrect(c.x - r * .88, c.y - r * 1.85, r * 1.76, r * 1.25, r * .25); ctx.fill();
+    } else if (ch.hair === 'slick') {
+      ctx.beginPath(); ctx.ellipse(c.x, c.y - r * .4, r * 1.02, r * .85, 0, Math.PI, 0); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(c.x - r * .1, c.y - r * .95, r * .9, r * .35, -.15, 0, 7); ctx.fill();
+    } else {
+      ctx.beginPath(); ctx.ellipse(c.x, c.y - r * .5, r * .97, r * .62, 0, Math.PI, 0); ctx.fill();
+      if (ch.cap) { ctx.fillStyle = ch.cap; ctx.beginPath(); ctx.ellipse(c.x, c.y - r * .55, r * 1.0, r * .72, 0, Math.PI, 0); ctx.fill(); ctx.fillRect(c.x - r * 1.15, c.y - r * .62, r * 2.3, r * .2); }
+    }
+    if (ch.beard) {
+      ctx.fillStyle = ch.hairCol;
+      ctx.beginPath(); ctx.moveTo(c.x - r * .9, c.y + r * .1); ctx.quadraticCurveTo(c.x, c.y + r * 1.55, c.x + r * .9, c.y + r * .1); ctx.fill();
+    }
+    if (ch.stache) {
+      ctx.fillStyle = ch.hairCol;
+      ctx.beginPath(); ctx.moveTo(c.x - r * .55, c.y + r * .7); ctx.quadraticCurveTo(c.x, c.y + r * .3, c.x + r * .55, c.y + r * .7);
+      ctx.quadraticCurveTo(c.x, c.y + r * .58, c.x - r * .55, c.y + r * .7); ctx.fill();
+    }
+  }
+
+  // =========================================================
+  // POSES (front view, inches; y = height above floor)
+  // =========================================================
+  function standing(shY, hipY, kneeY, kneeX, feetX, shW, ox = 0) {
+    return {
+      sh: [{ x: ox - shW, y: shY }, { x: ox + shW, y: shY }],
+      hip: [{ x: ox - 4.6, y: hipY }, { x: ox + 4.6, y: hipY }],
+      kn: [{ x: ox - kneeX, y: kneeY }, { x: ox + kneeX, y: kneeY }],
+      ft: [{ x: ox - feetX, y: 2.4 }, { x: ox + feetX, y: 2.4 }],
+      head: { x: ox, y: shY + 8.5 },
+    };
+  }
+  const mid = (a, b) => ({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
+
+  function pose(exId, p, m) {
+    const shW = 8.4 + 2.6 * (m - 1);
+    const e = ease(clamp(p, 0, 1));
+    let J, barY, grip, layer = 'front';
+    if (exId === 'dead') {
+      barY = lerp(PLATE.R, 31.5, e);
+      const shY = barY + 24;
+      J = standing(shY, lerp(26, 36, e), lerp(16, 18.5, e), lerp(10, 6.2, e), 7.5, shW);
+      J.head.y = shY + lerp(6.5, 8.5, e);
+      grip = shW + 5.5 + 1.5 * m;
+      J.ha = [{ x: -grip, y: barY }, { x: grip, y: barY }];
+      J.sh[0].x -= 2; J.sh[1].x += 2;
+      J.el = [mid(J.sh[0], J.ha[0]), mid(J.sh[1], J.ha[1])];
+    } else if (exId === 'squat') {
+      const shY = lerp(41, 56, e);
+      J = standing(shY, lerp(20, 36, e), lerp(16.5, 18.5, e), lerp(13.5, 6.5, e), 10, shW);
+      barY = shY + 1.5; grip = shW + 5;
+      J.ha = [{ x: -grip, y: barY }, { x: grip, y: barY }];
+      J.el = [{ x: -grip + .5, y: shY - 7 }, { x: grip - .5, y: shY - 7 }];
+      layer = 'mid';
+    } else if (exId === 'bench') {
+      J = {
+        sh: [{ x: -shW, y: 21 }, { x: shW, y: 21 }],
+        hip: [{ x: -5, y: 14.5 }, { x: 5, y: 14.5 }],
+        kn: [{ x: -13, y: 12 }, { x: 13, y: 12 }],
+        ft: [{ x: -18, y: 2.4 }, { x: 18, y: 2.4 }],
+        head: { x: 0, y: 28.5 },
+      };
+      grip = shW + 7.5;
+      barY = lerp(25, 46, e);
+      J.ha = [{ x: -grip, y: barY }, { x: grip, y: barY }];
+      const b = 1 - e;
+      J.el = [
+        { x: mid(J.sh[0], J.ha[0]).x - 7 * b, y: mid(J.sh[0], J.ha[0]).y - 4 * b },
+        { x: mid(J.sh[1], J.ha[1]).x + 7 * b, y: mid(J.sh[1], J.ha[1]).y - 4 * b },
+      ];
+      layer = 'bench';
+    } else if (exId === 'ohp') {
+      J = standing(56, 36, 18.5, 6.4, 8, shW);
+      grip = shW + 3;
+      barY = lerp(58, 80.5, e);
+      J.ha = [{ x: -grip, y: barY }, { x: grip, y: barY }];
+      const b = 1 - e;
+      J.el = [
+        { x: mid(J.sh[0], J.ha[0]).x - 2 * b, y: mid(J.sh[0], J.ha[0]).y - 9 * b },
+        { x: mid(J.sh[1], J.ha[1]).x + 2 * b, y: mid(J.sh[1], J.ha[1]).y - 9 * b },
+      ];
+    } else {
+      J = standing(56, 36, 18.5, 6.4, 8, shW);
+      grip = shW + .5;
+      barY = lerp(32, 54, e);
+      J.el = [{ x: -(shW + 1.2), y: 44 }, { x: shW + 1.2, y: 44 }];
+      J.ha = [{ x: -grip + e * 1.5, y: barY }, { x: grip - e * 1.5, y: barY }];
+    }
+    return { J, barY, grip, layer };
+  }
+
+  function flexPose(m) {
+    const shW = 8.4 + 2.6 * (m - 1);
+    const J = standing(56, 36, 18.5, 7, 9, shW);
+    J.el = [{ x: -(shW + 8), y: 57 }, { x: shW + 8, y: 57 }];
+    J.ha = [{ x: -(shW + 6), y: 68 }, { x: shW + 6, y: 68 }];
+    return J;
+  }
+
+  // =========================================================
+  // BARBELL + PLATES (real proportions; plates never shrink)
+  // =========================================================
+  function drawPlate(x, y, ang, side) {
+    const R = PLATE.R * u, t = PLATE.T * u, rx = R * 0.2;
+    ctx.save(); ctx.translate(x, y); ctx.rotate(ang);
+    const fx = side * t / 2;
+    ctx.fillStyle = '#060606';
+    ctx.beginPath(); ctx.ellipse(-fx, 0, rx, R, 0, 0, 7); ctx.fill();
+    const g = ctx.createLinearGradient(0, -R, 0, R);
+    g.addColorStop(0, '#8a6a4c'); g.addColorStop(.06, '#2a2622'); g.addColorStop(.5, '#121110'); g.addColorStop(1, '#050505');
+    ctx.fillStyle = g; ctx.fillRect(-t / 2, -R, t, 2 * R);
+    const fg = ctx.createLinearGradient(0, -R, 0, R);
+    fg.addColorStop(0, '#2e2925'); fg.addColorStop(.4, '#161412'); fg.addColorStop(1, '#070707');
+    ctx.fillStyle = fg;
+    ctx.beginPath(); ctx.ellipse(fx, 0, rx, R, 0, 0, 7); ctx.fill();
+    ctx.fillStyle = '#0c0b0a';
+    ctx.beginPath(); ctx.ellipse(fx, 0, rx * .8, R * .8, 0, 0, 7); ctx.fill();
+    ctx.fillStyle = '#1c1a18';
+    ctx.beginPath(); ctx.ellipse(fx, 0, rx * .4, R * .3, 0, 0, 7); ctx.fill();
+    // warm rim light on the top edge, cool on the far side
+    ctx.strokeStyle = 'rgba(255,180,110,.75)'; ctx.lineWidth = Math.max(1, u * .35);
+    ctx.beginPath(); ctx.ellipse(fx, 0, rx, R, 0, Math.PI * 1.25, Math.PI * 1.75); ctx.stroke();
+    ctx.strokeStyle = 'rgba(130,170,255,.25)';
+    ctx.beginPath(); ctx.ellipse(fx, 0, rx, R, 0, Math.PI * .6, Math.PI * .95); ctx.stroke();
+    ctx.restore();
+  }
+
+  function plateX(i) { return BAR.collar + 0.5 + PLATE.T / 2 + i * (PLATE.T + 0.08); }
+
+  // bend: 0..1 — only happens when the player stops tapping
+  function drawBarbell(barY, bend, grip, nPlates, extra) {
+    const sagMax = 13 * bend;
+    const sagAt = x => { const a = Math.abs(x); return a <= grip ? 0 : sagMax * Math.pow((a - grip) / (BAR.half - grip), 2); };
+    const yAt = x => barY - sagAt(x);
+    const angAt = x => Math.atan2(Y(yAt(x + .5)) - Y(yAt(x - .5)), u);
+    const line = (x0, x1) => { ctx.beginPath(); for (let x = x0; x <= x1 + .01; x += 1) { const sx = X(x), sy = Y(yAt(x)); x === x0 ? ctx.moveTo(sx, sy) : ctx.lineTo(sx, sy); } ctx.stroke(); };
+    ctx.lineCap = 'butt';
+    // shaft: dark steel with a hot specular from the spotlight
+    ctx.strokeStyle = '#3a3c3f'; ctx.lineWidth = BAR.shaftR * 2 * u; line(-BAR.collar, BAR.collar);
+    ctx.strokeStyle = 'rgba(255,215,170,.85)'; ctx.lineWidth = Math.max(1, BAR.shaftR * .45 * u);
+    ctx.save(); ctx.translate(0, -BAR.shaftR * .5 * u); line(-BAR.collar, BAR.collar); ctx.restore();
+    ctx.strokeStyle = 'rgba(0,0,0,.45)'; ctx.lineWidth = BAR.shaftR * 1.2 * u; ctx.setLineDash([1, 1.5]);
+    line(-BAR.collar + 4, -3); line(3, BAR.collar - 4); ctx.setLineDash([]);
+    for (const s of [-1, 1]) {
+      ctx.strokeStyle = '#55595d'; ctx.lineWidth = BAR.sleeveR * 2 * u;
+      s < 0 ? line(-BAR.half, -BAR.collar) : line(BAR.collar, BAR.half);
+      ctx.strokeStyle = 'rgba(255,220,180,.9)'; ctx.lineWidth = Math.max(1, BAR.sleeveR * .4 * u);
+      ctx.save(); ctx.translate(0, -BAR.sleeveR * .6 * u);
+      s < 0 ? line(-BAR.half, -BAR.collar) : line(BAR.collar, BAR.half); ctx.restore();
+      const cx = s * BAR.collar;
+      ctx.save(); ctx.translate(X(cx), Y(yAt(cx))); ctx.rotate(angAt(cx));
+      ctx.fillStyle = '#4a4d50'; ctx.beginPath(); ctx.ellipse(0, 0, .45 * u, 1.75 * u, 0, 0, 7); ctx.fill();
+      ctx.restore();
+    }
+    for (const s of [-1, 1]) {
+      for (let i = 0; i < nPlates; i++) {
+        const px = s * plateX(i);
+        let py = yAt(px); if (py < PLATE.R) py = PLATE.R;
+        drawPlate(X(px), Y(py), angAt(px), s);
+      }
+      const ext = extra && (s < 0 ? extra.L : extra.R);
+      if (ext) {
+        const px = s * ext; let py = yAt(Math.min(BAR.half, ext) * s); if (py < PLATE.R) py = PLATE.R;
+        drawPlate(X(px), Y(py), 0, s);
+      }
+      if (nPlates > 0) {
+        const ox = s * (plateX(nPlates - 1) + PLATE.T / 2 + .7);
+        ctx.save(); ctx.translate(X(ox), Y(yAt(ox))); ctx.rotate(angAt(ox));
+        ctx.fillStyle = '#5a5e62'; rrect(-.6 * u, -1.6 * u, 1.2 * u, 3.2 * u, .3 * u); ctx.fill();
+        ctx.restore();
+      }
+      const ex = s * BAR.half;
+      ctx.save(); ctx.translate(X(ex), Y(yAt(ex))); ctx.rotate(angAt(ex));
+      ctx.fillStyle = '#8a8d90'; ctx.beginPath(); ctx.ellipse(0, 0, .3 * u, BAR.sleeveR * u, 0, 0, 7); ctx.fill();
+      ctx.restore();
+    }
+  }
+
+  // =========================================================
+  // EQUIPMENT
+  // =========================================================
+  function drawRack(hookY) {
+    for (const s of [-1, 1]) {
+      const x = s * 30;
+      ctx.fillStyle = '#121314'; ctx.fillRect(X(x) - 1.5 * u, Y(90), 3 * u, 90 * u);
+      ctx.fillStyle = 'rgba(255,180,110,.25)'; ctx.fillRect(X(x) + (s < 0 ? 1.5 * u - 1 : -1.5 * u), Y(90), 1, 90 * u);
+      ctx.fillStyle = '#050505';
+      for (let y = 10; y < 88; y += 3) { ctx.beginPath(); ctx.arc(X(x), Y(y), .4 * u, 0, 7); ctx.fill(); }
+      ctx.fillStyle = '#2a2c2e';
+      ctx.fillRect(X(x) - (s > 0 ? 3.2 * u : -1.5 * u), Y(hookY + 1), 1.7 * u, 2.4 * u);
+      ctx.fillStyle = '#1a1b1c'; ctx.fillRect(X(x) - (s > 0 ? 6 * u : -1.5 * u), Y(hookY - 22), 4.5 * u, 1.4 * u);
+    }
+    ctx.fillStyle = '#0e0f10'; ctx.fillRect(X(-32), Y(90), 64 * u, 2 * u);
+    ctx.fillRect(X(-34), Y(1.5), 68 * u, 1.5 * u);
+  }
+  function drawBench() {
+    ctx.fillStyle = '#0c0c0c'; ctx.fillRect(X(-10), Y(1.6), 20 * u, 1.6 * u);
+    ctx.fillStyle = '#18191a'; ctx.fillRect(X(-1.5), Y(14), 3 * u, 12.5 * u);
+    ctx.fillStyle = '#141110'; rrect(X(-6), Y(17.6), 12 * u, 3.8 * u, 1.2 * u); ctx.fill();
+    ctx.fillStyle = 'rgba(255,180,110,.35)'; ctx.fillRect(X(-5.5), Y(17.6), 11 * u, 1);
+  }
+
+  // =========================================================
+  // LOADING SEQUENCE — he racks it, gets up, loads each side, gets back under it
+  // =========================================================
+  const LOAD_T = (() => {
+    const seg = [['rack', .45], ['up', .5], ['walkL', .6], ['grabL', .35], ['slideL', .55], ['releaseL', .3], ['walkR', .9], ['grabR', .35], ['slideR', .55], ['releaseR', .3], ['back', .6], ['down', .5], ['unrack', .35]];
+    const o = { seg: [] }; let t = 0;
+    for (const [k, d] of seg) { o.seg.push([k, t, t + d]); t += d; o[k] = t; }
+    return o;
+  })();
+  const smooth = t => -(Math.cos(Math.PI * clamp(t, 0, 1)) - 1) / 2;   // ease-in-out sine
+
+  function lerpJ(A, B, t) {
+    const o = { head: { x: lerp(A.head.x, B.head.x, t), y: lerp(A.head.y, B.head.y, t) } };
+    for (const k of ['sh', 'hip', 'kn', 'ft', 'el', 'ha']) o[k] = [0, 1].map(i => ({ x: lerp(A[k][i].x, B[k][i].x, t), y: lerp(A[k][i].y, B[k][i].y, t) }));
+    return o;
+  }
+
+  // Standing/crouching body. stride: leg swing (-1..1). reach: {x, y, side} hands on a plate, or null = arms relaxed.
+  // The lower the hands need to go, the more he squats down, so nothing ever stretches.
+  function bodyJ(ox, m, stride, reach) {
+    const shW = 8.4 + 2.6 * (m - 1);
+    const handY = reach ? reach.y : 33;
+    const shY = clamp(handY + 21, 32, 56) + Math.abs(stride) * .4;
+    const k = clamp((shY - 32) / 24, 0, 1);              // 1 = standing tall, 0 = deep squat
+    const J = standing(shY, lerp(25, 36, k), lerp(16, 18.5, k), lerp(10, 6.4, k), 7.5, shW, ox);
+    J.ft[0].x = ox - 7 + stride * 3.5; J.ft[1].x = ox + 7 - stride * 3.5;
+    J.kn[0].x += stride * 1.8; J.kn[1].x -= stride * 1.8;
+    J.head.y = shY + lerp(7, 8.5, k);
+    if (reach) {
+      const s = reach.side;                               // which side of him the plate is on
+      const near = s < 0 ? 0 : 1, far = 1 - near;
+      J.ha = []; J.el = [];
+      J.ha[near] = { x: reach.x - s * .5, y: reach.y + 5 };
+      J.ha[far] = { x: reach.x - s * 2.5, y: reach.y - 3 };
+      for (const i of [0, 1]) { const m2 = mid(J.sh[i], J.ha[i]); J.el[i] = { x: m2.x + (i ? 2 : -2), y: m2.y - 2 }; }
+    } else {
+      J.ha = [{ x: ox - shW - 2.5, y: 33 }, { x: ox + shW + 2.5, y: 33 }];
+      J.el = [mid(J.sh[0], J.ha[0]), mid(J.sh[1], J.ha[1])];
+      J.el[0].x -= 1.5; J.el[1].x += 1.5;
+    }
+    return J;
+  }
+
+  // where the bar sits while he steps away: on the hooks, or on the floor
+  function restPose(m) {
+    const ex = G.ex;
+    return ex.hooks ? pose(ex.id, ex.restP, m) : pose('dead', 0, m);
+  }
+
+  const treeX = () => Math.min(50, W / u / 2 - 4);      // plate trees at both edges
+  const TREE_PIN = 30;                                   // height of the plate he grabs
+
+  function drawPlateTrees() {
+    const tx = treeX();
+    for (const s of [-1, 1]) {
+      const x = s * tx;
+      ctx.fillStyle = '#0d0e0f'; ctx.fillRect(X(x - 1.2), Y(46), 2.4 * u, 46 * u);
+      ctx.fillRect(X(x - 7), Y(1.5), 14 * u, 1.5 * u);
+      ctx.fillStyle = 'rgba(255,180,110,.25)'; ctx.fillRect(X(x - 1.2), Y(46), 2.4 * u, 1);
+      // spare plates hanging on the pins
+      for (const [py, n] of [[12, 3], [TREE_PIN, 2]]) {
+        for (let i = n - 1; i >= 0; i--) drawPlate(X(x - s * (2.2 + i * 2.1)), Y(py), 0, -s);
+      }
+    }
+  }
+
+  function loadState(t, m) {
+    const ex = G.ex, T = LOAD_T;
+    const start = pose(ex.id, G.from, m), rest = restPose(m), back = pose(ex.id, ex.restP, m);
+    const tx = treeX(), standX = tx - 9, slot = plateX(G.plates);
+    let k = 'unrack', lin = 1;
+    for (const [name, a, b] of T.seg) if (t < b) { k = name; lin = clamp((t - a) / (b - a), 0, 1); break; }
+    const e = smooth(lin);
+    // legs swing with distance travelled, fading to still at both ends of each walk
+    const stride = (ox) => Math.sin(ox * .32) * Math.sin(Math.PI * lin);
+    const plateOn = { x: tx - 4.3, y: TREE_PIN };          // the plate he takes from the tree
+    const out = { barY: rest.barY, grip: rest.grip, layer: rest.layer, holding: false, carry: null, extra: { L: null, R: null } };
+    if (t >= T.slideL) out.extra.L = slot;
+    const stand0 = bodyJ(0, m, 0, null);
+
+    const grabPose = (s) => {
+      const target = { x: s * plateOn.x, y: plateOn.y, side: s };
+      const relaxed = bodyJ(s * standX, m, 0, null), reaching = bodyJ(s * standX, m, 0, target);
+      return lerpJ(relaxed, reaching, e);
+    };
+    const slidePose = (s) => {
+      // plate travels from the tree straight onto its slot on the sleeve
+      const px = s * lerp(plateOn.x, slot, e), py = lerp(plateOn.y, rest.barY, e);
+      out.carry = { x: px, y: py, side: s };
+      return bodyJ(s * lerp(standX, Math.max(slot - 4, standX - 6), e), m, 0, { x: px, y: py, side: s });
+    };
+
+    switch (k) {
+      case 'rack':
+        out.holding = true; out.layer = start.layer;
+        out.J = lerpJ(start.J, rest.J, e); out.barY = lerp(start.barY, rest.barY, e); out.grip = lerp(start.grip, rest.grip, e); break;
+      case 'up': out.J = lerpJ(rest.J, stand0, e); break;
+      case 'walkL': { const ox = lerp(0, -standX, e); out.J = bodyJ(ox, m, stride(ox), null); break; }
+      case 'grabL': out.J = grabPose(-1); if (lin > .6) out.carry = { x: -plateOn.x, y: plateOn.y, side: -1 }; break;
+      case 'slideL': out.J = slidePose(-1); break;
+      case 'releaseL': case 'releaseR': {
+        const s = k === 'releaseL' ? -1 : 1, ox = s * Math.max(slot - 4, standX - 6);
+        const held = bodyJ(ox, m, 0, { x: s * slot, y: rest.barY, side: s });
+        out.J = lerpJ(held, bodyJ(ox, m, 0, null), e); break;
+      }
+      case 'walkR': {
+        const from = -Math.max(slot - 4, standX - 6), ox = lerp(from, standX, e);
+        out.J = bodyJ(ox, m, stride(ox), null); break;
+      }
+      case 'grabR': out.J = grabPose(1); if (lin > .6) out.carry = { x: plateOn.x, y: plateOn.y, side: 1 }; break;
+      case 'slideR': out.J = slidePose(1); break;
+      case 'back': {
+        const ox = lerp(Math.max(slot - 4, standX - 6), 0, e);
+        out.J = bodyJ(ox, m, stride(ox), null); break;
+      }
+      case 'down': out.J = lerpJ(stand0, rest.J, e); break;
+      default:
+        out.holding = true; out.layer = back.layer;
+        out.J = lerpJ(rest.J, back.J, e); out.barY = lerp(rest.barY, back.barY, e); out.grip = lerp(rest.grip, back.grip, e);
+    }
+    if (t >= T.slideR) out.extra = null;     // both plates are now part of G.plates
+    return out;
+  }
+
+  // =========================================================
+  // SPOTTER — rushes in behind you when you stop tapping
+  // =========================================================
+  function drawSpotter(barY, grip) {
+    const sp = ease(G.spot); if (sp <= 0.01) return;
+    const ox = lerp(W / u / 2 + 14, 9, sp);
+    const shY = clamp(barY + 22, 34, 56), hipY = Math.min(36, shY - 12);
+    const J = standing(shY, hipY, Math.min(18.5, hipY - 12), lerp(6.5, 11, (56 - shY) / 22), 9, 8.8, ox);
+    J.head.y = shY + 8;
+    if (sp > .8) {
+      const hx = Math.max(6, grip - 6);
+      J.ha = [{ x: -hx + 4, y: barY - 1 }, { x: hx + 2, y: barY - 1 }];
+      J.el = [mid(J.sh[0], J.ha[0]), mid(J.sh[1], J.ha[1])];
+      J.el[0].x -= 3; J.el[1].x += 3;
+    } else {
+      J.ha = [{ x: ox - 11, y: shY - 18 }, { x: ox + 11, y: shY - 18 }];
+      J.el = [mid(J.sh[0], J.ha[0]), mid(J.sh[1], J.ha[1])];
+    }
+    const ch = SPOTTERS[0];
+    lit(() => { drawLower(J, ch, .9); drawTorso(J, ch, .9); drawArms(J, ch, .9); drawHead(J, ch); }, { rim: '#9fc3ff', glow: 5, alpha: .9, dark: .9 });
+  }
+
+  // =========================================================
+  // MAIN DRAW
+  // =========================================================
+  function drawScene() {
+    const ex = G.ex, ch = CHARS[charIdx], m = G.m;
+    const L = { rim: ch.rim };
+    let st;
+    if (G.phase === 'load' && G.load) st = loadState(G.t, m);
+    else { const p = pose(ex.id, G.progress, m); st = { ...p, holding: true, extra: null }; }
+    const { J, barY, grip } = st;
+
+    if (ex.hooks) drawRack(pose(ex.id, ex.restP, m).barY - 1.2);
+    drawPlateTrees();
+    if (G.phase !== 'load') drawSpotter(barY, grip);
+    if (ex.id === 'bench') drawBench();
+
+    const barFn = () => {
+      if (G.phase === 'snap') {
+        const s = G.snap;
+        for (const side of [-1, 1]) {
+          ctx.save();
+          ctx.beginPath(); side < 0 ? ctx.rect(-50, -50, X(0) + 50, H + 100) : ctx.rect(X(0), -50, W, H + 100); ctx.clip();
+          const piv = { x: X(side * grip), y: Y(barY) };
+          ctx.translate(0, clamp(s.fall * .5, 0, Math.max(0, Y(PLATE.R) - piv.y)));
+          ctx.translate(piv.x, piv.y); ctx.rotate(side * Math.min(s.a, .5) * .5); ctx.translate(-piv.x, -piv.y);
+          drawBarbell(barY, 1, grip, G.plates);
+          ctx.restore();
+        }
+        ctx.save(); ctx.globalCompositeOperation = 'lighter';
+        for (let i = 0; i < 14; i++) {
+          const a = i / 14 * Math.PI * 2, d = G.snap.a * 45 * (0.6 + (i % 3) * .2);
+          ctx.fillStyle = `rgba(255,${180 + (i % 3) * 25},90,${1 - G.snap.a / 1.2})`;
+          ctx.fillRect(X(0) + Math.cos(a) * d, Y(barY) + Math.sin(a) * d, 2.5, 2.5);
+        }
+        ctx.restore();
+        return;
+      }
+      drawBarbell(barY, G.bend, grip, G.plates, st.extra);
+    };
+
+    if (!st.holding) {
+      // he's off the bar: walking around in front of it
+      barFn();
+      lit(() => { drawLower(J, ch, m); drawTorso(J, ch, m); drawHead(J, ch); }, L);
+      if (st.carry) drawPlate(X(st.carry.x), Y(Math.max(PLATE.R, st.carry.y)), 0, st.carry.side);
+      lit(() => drawArms(J, ch, m), L);
+    } else if (st.layer === 'bench') {
+      lit(() => { drawLower(J, ch, m); drawHead(J, ch); drawTorso(J, ch, m); drawArms(J, ch, m); }, L); barFn();
+    } else if (st.layer === 'mid') {
+      lit(() => { drawLower(J, ch, m); drawTorso(J, ch, m); }, L); barFn(); lit(() => { drawArms(J, ch, m); drawHead(J, ch); }, L);
+    } else {
+      lit(() => { drawLower(J, ch, m); drawTorso(J, ch, m); drawArms(J, ch, m); drawHead(J, ch); }, L); barFn();
+    }
+  }
+
+  let lastDraw = performance.now();
+  function draw() {
+    const t = performance.now(), dt = Math.min(.05, (t - lastDraw) / 1000); lastDraw = t;
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    ctx.clearRect(0, 0, W, H);
+    ctx.drawImage(bgCanvas, 0, 0, W, H);
+    if (!G) return;
+
+    // weight, faint on the back wall
+    ctx.fillStyle = 'rgba(255,200,150,.035)';
+    ctx.font = `700 ${Math.min(W * .42, H * .32)}px Oswald, sans-serif`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(weight(), W / 2, Y(56));
+
+    const sh = G.shake;
+    ctx.save(); ctx.translate((Math.random() - .5) * sh, (Math.random() - .5) * sh);
+    drawScene();
+    ctx.restore();
+
+    drawMotes(dt);
+
+    ctx.textAlign = 'center';
+    for (const p of G.pops) {
+      ctx.fillStyle = `rgba(255,138,61,${clamp(p.life, 0, 1)})`;
+      ctx.font = `700 ${26 + (1 - p.life) * 8}px Oswald, sans-serif`;
+      ctx.fillText(p.text, W * .84, Y(64) - p.y);
+    }
+    if (G.spot > .02 && (G.phase === 'push' || G.phase === 'rep')) {
+      const g = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * .3, W / 2, H / 2, Math.max(W, H) * .75);
+      g.addColorStop(0, 'rgba(224,64,42,0)'); g.addColorStop(1, `rgba(224,64,42,${G.spot * .4})`);
+      ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    }
+    if (G.fade > 0) { ctx.fillStyle = `rgba(0,0,0,${G.fade})`; ctx.fillRect(0, 0, W, H); }
+  }
+
+  // =========================================================
+  // CHARACTER PREVIEWS (menu)
+  // =========================================================
+  function renderPreviews() {
+    const wrap = $('chars'); wrap.innerHTML = '';
+    CHARS.forEach((ch, i) => {
+      const btn = document.createElement('button');
+      btn.className = 'charBtn' + (i === charIdx ? ' sel' : '');
+      const cv = document.createElement('canvas');
+      btn.appendChild(cv);
+      btn.insertAdjacentHTML('beforeend', `<div class="n">${ch.name}</div><div class="d">${ch.tag}</div>`);
+      btn.addEventListener('click', () => { charIdx = i; renderPreviews(); });
+      wrap.appendChild(btn);
+      requestAnimationFrame(() => {
+        const r = cv.getBoundingClientRect(); if (!r.width) return;
+        const d = Math.min(devicePixelRatio || 1, 2);
+        cv.width = r.width * d; cv.height = r.height * d;
+        const saved = { ctx, u, floorY, cxS };
+        ctx = cv.getContext('2d'); ctx.setTransform(d, 0, 0, d, 0, 0);
+        u = r.height / 86; floorY = r.height + 18 * u; cxS = r.width / 2;
+        ctx.fillStyle = '#070605'; ctx.fillRect(0, 0, r.width, r.height);
+        const g = ctx.createRadialGradient(cxS, 0, 2, cxS, r.height * .3, r.width);
+        g.addColorStop(0, 'rgba(255,190,130,.35)'); g.addColorStop(1, 'rgba(255,190,130,0)');
+        ctx.fillStyle = g; ctx.fillRect(0, 0, r.width, r.height);
+        const m = ch.m0 + .3, J = flexPose(m);
+        lit(() => { drawLower(J, ch, m); drawTorso(J, ch, m); drawArms(J, ch, m); drawHead(J, ch); }, { rim: ch.rim, glow: 8, dpr: d });
+        ({ ctx, u, floorY, cxS } = saved);
+      });
     });
   }
-  return s;
-}
-
-function lying(f, i) {
-  const sk = 'url(#sk' + i + ')', d = f.dark;
-  let s = '<rect x="104" y="296" width="10" height="40" fill="#222"/><rect x="186" y="296" width="10" height="40" fill="#222"/>';
-  s += '<rect x="90" y="126" width="120" height="176" rx="12" fill="url(#pad)" stroke="#555" stroke-width="2"/>';
-  s += '<path d="M78 276 Q150 258 222 276 L194 170 Q150 160 106 170Z" fill="' + sk + '"/>';
-  s += '<path d="M150 188 L150 252" stroke="' + d + '" stroke-width="3" fill="none" opacity=".7"/>';
-  s += '<g class="mpec" style="transform-origin:150px 250px;transition:transform .6s">';
-  s += '<path d="M150 248 Q118 250 96 232 Q92 262 150 268Z M150 248 Q182 250 204 232 Q208 262 150 268Z" fill="' + sk + '" stroke="' + d + '" stroke-opacity=".6" stroke-width="1.5"/>';
-  s += '<path d="M98 244 Q124 270 150 266 Q176 270 202 244" stroke="' + d + '" stroke-width="4" fill="none" opacity=".7" stroke-linecap="round"/>';
-  s += '<ellipse cx="124" cy="250" rx="16" ry="7" fill="#fff" opacity=".14"/><ellipse cx="176" cy="250" rx="16" ry="7" fill="#fff" opacity=".14"/>';
-  s += '</g>';
-  [[139,190],[151,190],[139,203],[151,203],[140,216],[151,216]].forEach(p => { s += '<rect x="' + p[0] + '" y="' + p[1] + '" width="10" height="10" rx="4" fill="' + sk + '" stroke="' + d + '" stroke-opacity=".35"/>'; });
-  s += '<path d="M110 172 H190 L194 148 H106Z" fill="' + f.trunks + '"/>';
-  s += '<circle class="mdelt" style="transform-origin:80px 266px;transition:transform .6s" cx="80" cy="266" r="23" fill="url(#dl' + i + ')"/><circle class="mdelt" style="transform-origin:220px 266px;transition:transform .6s" cx="220" cy="266" r="23" fill="url(#dl' + i + ')"/>';
-  s += '<rect x="136" y="268" width="28" height="26" fill="' + d + '"/>';
-  return s + head(f, i, 150, 308);
-}
-
-function background() {
-  let s = '<rect width="300" height="360" fill="#0d0d0f"/>';
-  s += '<rect x="0" y="56" width="300" height="276" fill="url(#mirror)"/>';
-  for (let x = 0; x <= 300; x += 75) s += '<rect x="' + (x - 1.5) + '" y="56" width="3" height="276" fill="#050506"/>';
-  [[30,56,90,332],[190,56,250,332],[120,56,150,332]].forEach(g => { s += '<path d="M' + g[0] + ' ' + g[1] + ' L' + (g[0] + 22) + ' ' + g[1] + ' L' + g[2] + ' ' + g[3] + ' L' + (g[2] - 22) + ' ' + g[3] + 'Z" fill="#fff" opacity=".05"/>'; });
-  s += '<rect y="0" width="300" height="56" fill="#0d0d0f"/><rect y="52" width="300" height="5" fill="url(#gold)"/><rect y="56" width="300" height="3" fill="#000" opacity=".5"/>';
-  s += '<rect x="78" y="10" width="144" height="34" rx="3" fill="#000" stroke="url(#gold)" stroke-width="3"/>';
-  s += '<text x="150" y="34" font-family="Impact, Arial Black, sans-serif" font-size="24" fill="url(#gold)" text-anchor="middle" letter-spacing="3">IRON GYM</text>';
-  s += '<rect width="300" height="360" fill="url(#spot)"/>';
-  s += '<rect y="330" width="300" height="30" fill="#0a0a0b"/><rect y="330" width="300" height="3" fill="url(#gold)"/>';
-  for (let x = 0; x < 300; x += 30) s += '<rect x="' + x + '" y="336" width="1" height="24" fill="#fff" opacity=".06"/>';
-  s += '<rect x="4" y="296" width="40" height="5" fill="#222"/><rect x="6" y="301" width="4" height="30" fill="#222"/><rect x="38" y="301" width="4" height="30" fill="#222"/>';
-  for (let i = 0; i < 4; i++) s += '<rect x="' + (9 + i * 8) + '" y="' + (284 + (i % 2) * 2) + '" width="6" height="12" rx="2" fill="#3a3a40"/><rect x="' + (7 + i * 8) + '" y="288" width="10" height="4" fill="#9a9da5" opacity=".6"/>';
-  const type = LIFTS[lift].type;
-  if (type === 'dead' || type === 'curl' || type === 'shrug' || type === 'press') {
-    s += '<rect x="30" y="336" width="240" height="14" rx="2" fill="url(#wood)"/>';
-    for (let x = 50; x < 270; x += 40) s += '<rect x="' + x + '" y="336" width="1.5" height="14" fill="#000" opacity=".35"/>';
-  } else {
-    const top = type === 'squat' ? 96 : 110;
-    [50, 242].forEach(x => {
-      s += '<rect x="' + x + '" y="' + top + '" width="9" height="' + (336 - top) + '" fill="#2a2b30"/><rect x="' + x + '" y="' + top + '" width="3" height="' + (336 - top) + '" fill="#8a8d98"/>';
-      for (let y = top + 20; y < 330; y += 16) s += '<circle cx="' + (x + 5) + '" cy="' + y + '" r="1.6" fill="#000"/>';
+  function refreshBest() {
+    const ex = EXERCISES[exIdx], b = load('irontap_best_' + ex.id);
+    $('bestLbl').textContent = b ? `${ex.name.toUpperCase()} BEST · ${b.reps} reps · ${b.weight} lb · level ${b.level}` : '';
+  }
+  function renderWorkouts() {
+    const wrap = $('workouts'); wrap.innerHTML = '';
+    EXERCISES.forEach((ex, i) => {
+      const btn = document.createElement('button');
+      btn.className = 'wBtn' + (i === exIdx ? ' sel' : '');
+      const top = BAR_LB + MAX_PLATES * 2 * PLATE_LB, start = BAR_LB + ex.start * 2 * PLATE_LB;
+      btn.innerHTML = `${ex.name}<small>${start} → ${top} lb</small>`;
+      btn.addEventListener('click', () => { exIdx = i; renderWorkouts(); refreshBest(); });
+      wrap.appendChild(btn);
     });
-    s += '<rect x="50" y="' + (type === 'squat' ? 118 : 270) + '" width="26" height="6" fill="#55585f"/><rect x="224" y="' + (type === 'squat' ? 118 : 270) + '" width="26" height="6" fill="#55585f"/>';
-    if (type === 'squat') s += '<rect x="50" y="300" width="9" height="4" fill="#d9b13a"/><rect x="242" y="300" width="9" height="4" fill="#d9b13a"/>';
   }
-  return s;
-}
 
-function addPlates() {
-  const L = LIFTS[lift], idx = reps / 5 - 1;
-  if (plates.length < MAXP) plates.push(L.adds[Math.min(idx, L.adds.length - 1)]);
-  else {
-    plates.sort((a, b) => b - a);
-    const k = plates.length - 1, t = TIERS.indexOf(plates[k]);
-    if (t < TIERS.length - 1) plates[k] = TIERS[t + 1];
-    else { for (let j = k; j >= 0; j--) { const tj = TIERS.indexOf(plates[j]); if (tj < TIERS.length - 1) { plates[j] = TIERS[tj + 1]; break; } } }
+  // =========================================================
+  // PR SPARKS
+  // =========================================================
+  let confetti = [];
+  function confettiBurst() {
+    for (let i = 0; i < 140; i++) confetti.push({
+      x: innerWidth / 2, y: innerHeight * .3,
+      vx: (Math.random() - .5) * 800, vy: -Math.random() * 800 - 150,
+      c: Math.random() < .7 ? '#ff8a3d' : '#ffe2b8', life: 1.6 + Math.random(), s: 1.5 + Math.random() * 2,
+    });
   }
-  plates.sort((a, b) => b - a);
-}
-
-function half(side, newest) {
-  const sgn = side === 'L' ? -1 : 1, n = plates.length;
-  const x0 = side === 'L' ? 100 : 200;
-  let s = '';
-  if (side === 'L') s += '<rect x="20" y="-4" width="130" height="8" fill="url(#steel)"/><rect x="108" y="-4.5" width="42" height="9" fill="url(#knurl)"/><rect x="100" y="-5" width="3" height="10" fill="#555"/>';
-  else s += '<rect x="150" y="-4" width="130" height="8" fill="url(#steel)"/><rect x="150" y="-4.5" width="42" height="9" fill="url(#knurl)"/><rect x="197" y="-5" width="3" height="10" fill="#555"/>';
-  s += '<rect x="' + (side === 'L' ? 10 : 200) + '" y="-7.5" width="90" height="15" rx="3" fill="url(#chrome)"/>';
-  plates.forEach((p, i) => {
-    const h = p === 10 ? 92 : 126;
-    const x = side === 'L' ? x0 - PW * (i + 1) : x0 + PW * i;
-    const isNew = newest && i === newest - 1;
-    s += '<g class="plate' + (isNew ? ' new' : '') + '"><rect x="' + x + '" y="' + (-h / 2) + '" width="' + PW + '" height="' + h + '" rx="3" fill="url(#pl' + p + ')" stroke="#0b0b0c" stroke-width="1.2"/>';
-    s += '<rect x="' + (x + 1.5) + '" y="' + (-h / 2 + 5) + '" width="1.5" height="' + (h - 10) + '" fill="#fff" opacity=".3"/>';
-    s += '<text x="' + (x + PW / 2 + 1) + '" y="0" font-size="7" font-family="Arial" font-weight="bold" fill="#000" fill-opacity=".7" text-anchor="middle" dominant-baseline="middle" transform="rotate(-90 ' + (x + PW / 2 + 1) + ' 0)">' + p + '</text></g>';
-  });
-  const cx = side === 'L' ? x0 - PW * n - 8 : x0 + PW * n + 1;
-  s += '<rect x="' + cx + '" y="-9.5" width="7" height="19" rx="2" fill="#17171a" stroke="#8a8d96" stroke-width="1"/><rect x="' + (cx + 1.5) + '" y="-8" width="1.5" height="16" fill="#fff" opacity=".35"/>';
-  return s;
-}
-
-function buildBar(newest) {
-  $('barL').innerHTML = half('L', newest);
-  $('barR').innerHTML = half('R', newest);
-  const bend = 0;
-  ['barL', 'barR'].forEach((id, k) => {
-    const e = $(id);
-    e.style.transformOrigin = '150px 0px';
-    e.style.transition = 'transform .3s';
-    e.style.transform = 'rotate(' + (k === 0 ? -bend : bend) + 'deg)';
-  });
-  $('weight').textContent = weightNow();
-}
-
-function drawFrame() {
-  const L = LIFTS[lift], f = FIGHTERS[fi], type = L.type;
-  const jx = grip < 35 && state === 'play' ? (Math.random() - .5) * 5 * (1 - grip / 35) : 0;
-  $('barG').setAttribute('transform', 'translate(' + jx.toFixed(1) + ' ' + cur.toFixed(1) + ')');
-  let sy = L.sy;
-  if (type === 'squat') {
-    const sc = 1 - (cur - L.low) / 284;
-    sy = 340 + (114 - 340) * sc;
-    $('bodyG').setAttribute('transform', 'translate(0 ' + (340 * (1 - sc)).toFixed(1) + ') scale(1 ' + sc.toFixed(3) + ')');
-  }
-  if (type === 'dead') {
-    const pr = Math.max(0, Math.min(1, (L.low - cur) / (L.low - L.high)));
-    const sc = 1 - 0.07 * (1 - pr);
-    sy = 346 - (346 - 114) * sc;
-    $('bodyG').setAttribute('transform', 'translate(0 ' + (346 * (1 - sc)).toFixed(1) + ') scale(1 ' + sc.toFixed(3) + ')');
-  }
-  const hy = cur;
-  [['L', 150 - L.shoulder, 150 - L.hand + jx], ['R', 150 + L.shoulder, 150 + L.hand + jx]].forEach(([k, sx, hx]) => {
-    const dir = k === 'L' ? -1 : 1;
-    let d;
-    if (type === 'bench') {
-      const t = Math.max(0, Math.min(1, (sy - hy) / 130));
-      d = 'M' + sx + ' ' + sy + ' Q' + (sx + dir * (1 - t) * 50) + ' ' + ((sy + hy) / 2) + ' ' + hx + ' ' + hy;
-    } else if (type === 'squat') d = 'M' + sx + ' ' + sy + ' Q' + (sx + dir * 12) + ' ' + (sy + 42) + ' ' + hx + ' ' + hy;
-    else if (type === 'curl') d = 'M' + sx + ' ' + sy + ' L' + (150 + dir * 66) + ' 176 L' + hx + ' ' + hy;
-    else d = 'M' + sx + ' ' + sy + ' L' + hx + ' ' + hy;
-    $('arm' + k).setAttribute('d', d);
-    $('arm' + k).setAttribute('stroke', f.skin);
-    $('hl' + k).setAttribute('d', d);
-    $('hl' + k).setAttribute('transform', 'translate(' + (dir * 3) + ' 0)');
-    const h = $('hand' + k);
-    h.setAttribute('cx', hx); h.setAttribute('cy', hy); h.setAttribute('fill', f.dark);
-  });
-}
-
-function loop(t) {
-  const dt = Math.min(0.05, (t - last) / 1000 || 0);
-  last = t;
-  if (state === 'load') {
-    loadT += dt / 1.7;
-    if (!placed && loadT >= .5) {
-      placed = true;
-      plates = pendingAfter.slice();
-      buildBar(plates.indexOf(Math.min.apply(null, plates)) + 1);
+  function drawConfetti(dt) {
+    const cf = $('confetti'), c = cf.getContext('2d');
+    c.setTransform(DPR, 0, 0, DPR, 0, 0);
+    c.clearRect(0, 0, innerWidth, innerHeight);
+    confetti = confetti.filter(k => (k.life -= dt) > 0);
+    c.globalCompositeOperation = 'lighter';
+    for (const k of confetti) {
+      k.vy += 900 * dt; k.vx *= .985; k.x += k.vx * dt; k.y += k.vy * dt;
+      c.globalAlpha = Math.min(1, k.life); c.fillStyle = k.c;
+      c.shadowColor = k.c; c.shadowBlur = 8;
+      c.beginPath(); c.arc(k.x, k.y, k.s, 0, 7); c.fill();
     }
-    drawHelpers(Math.min(1, loadT));
-    if (loadT >= 1) {
-      $('helpG').innerHTML = '';
-      if (reps % 20 === 0) { state = 'rack'; rackT = 0; target = LIFTS[lift].high; newPR(); $('hint').textContent = 'Re-racking...'; }
-      else { state = 'play'; lastTap = performance.now(); cue(CUES[Math.floor(Math.random() * CUES.length)]); }
-    }
-  } else if (state === 'rack') {
-    rackT += dt / 1.8;
-    if (rackT >= 1) { state = 'play'; target = LIFTS[lift].low; grip = 100; lastTap = performance.now(); $('hint').textContent = 'Level ' + (Math.floor(reps / 20) + 1) + '. Keep tapping!'; }
+    c.shadowBlur = 0; c.globalAlpha = 1; c.globalCompositeOperation = 'source-over';
   }
-  if (state === 'play' || state === 'load' || state === 'rack') {
-    if (state === 'play' && running) {
-      const idle = (performance.now() - lastTap) / 1000, allowed = Math.max(0.7, 2.2 - 0.015 * reps);
-      grip = Math.max(0, 100 * (1 - idle / allowed));
-      if (idle >= allowed) { grip = 0; breakBar(); }
-    }
-    $('grip').style.width = Math.max(0, grip) + '%';
-    $('gripWrap').classList.toggle('low', grip < 30);
-    const bend = grip < 35 ? (1 - grip / 35) * 9 : 0;
-    $('barL').style.transition = 'transform .1s';
-    $('barR').style.transition = 'transform .1s';
-    $('barL').style.transform = 'rotate(' + (-bend).toFixed(2) + 'deg)';
-    $('barR').style.transform = 'rotate(' + bend.toFixed(2) + 'deg)';
-    const goingUp = Math.abs(target - LIFTS[lift].low) > Math.abs(target - LIFTS[lift].high);
-    const rate = goingUp ? Math.max(0.1, 0.26 - weightNow() / 3200) : 0.14;
-    cur += (target - cur) * rate;
-    if (Math.abs(target - cur) < 0.2) cur = target;
-    drawFrame();
-  }
-  requestAnimationFrame(loop);
-}
 
-// Difficulty ramps smoothly: drain speeds up and each tap refills a bit less as reps climb
-function drainRate(r) { return TAP_GAIN * (0.8 + 0.04 * r); }
-function tapGain(r) { return TAP_GAIN; }
-
-function cue(text) {
-  const c = $('cue');
-  c.textContent = text;
-  c.classList.remove('show'); void c.offsetWidth; c.classList.add('show');
-}
-
-function savePR() {
-  const w = weightNow();
-  if (w > (best[lift] || 0)) {
-    best[lift] = w;
-    try { localStorage.setItem('tapkombat-pr', JSON.stringify(best)); } catch (e) {}
-  }
-}
-
-function startLift(l) {
-  lift = l; reps = 0; nextPlateAt = 5; grip = 100; running = false; state = 'play';
-  plates = LIFTS[l].base.slice();
-  $('liftName').textContent = LIFTS[l].name;
-  $('fname').textContent = FIGHTERS[fi].name + '  LV 1';
-  $('helpG').innerHTML = '';
-  $('reps').textContent = 0;
-  $('hint').textContent = 'Tap to start. Keep tapping!';
-  $('banner').classList.remove('show');
-  ['armL','armR','hlL','hlR','handL','handR'].forEach(id => { $(id).style.visibility = 'visible'; });
-  $('bgG').innerHTML = background();
-  $('bodyG').removeAttribute('transform');
-  $('bodyG').innerHTML = '<g id="muscle">' + (l === 'bench' ? lying(FIGHTERS[fi], fi) : standing(FIGHTERS[fi], fi, false)) + '</g>';
-  growMuscles();
-  cur = target = LIFTS[l].low;
-  buildBar(0);
-  show('play');
-  cue('FIGHT!');
-}
-
-function breakBar() {
-  state = 'broken'; running = false;
-  $('barL').style.transition = 'transform 1s ease-in';
-  $('barR').style.transition = 'transform 1s ease-in';
-  $('barL').style.transform = 'rotate(-42deg) translateY(150px)';
-  $('barR').style.transform = 'rotate(42deg) translateY(150px)';
-  ['armL','armR','hlL','hlR','handL','handR'].forEach(id => { $(id).style.visibility = 'hidden'; });
-  cue('CRACK!');
-  const st = $('stage');
-  st.classList.remove('shake', 'crack'); void st.offsetWidth; st.classList.add('crack');
-  if (navigator.vibrate) navigator.vibrate([200, 60, 300]);
-  setTimeout(() => {
-    $('endTitle').textContent = 'BAR BROKEN';
-    $('endText').textContent = FIGHTERS[fi].name + ' snapped the bar at ' + weightNow() + ' lb after ' + reps + ' reps.' + (best[lift] ? ' Best PR: ' + best[lift] + ' lb.' : '');
-    updateMenu();
-    show('endScreen');
-  }, 1700);
-}
-
-function growMuscles() {
-  const g = Math.min(6, Math.floor(reps / 20));
-  const q = sel => document.querySelectorAll('#bodyG ' + sel);
-  q('.mdelt').forEach(e => { e.style.transform = 'scale(' + (1 + 0.03 * g).toFixed(3) + ')'; });
-  q('.mpec').forEach(e => { e.style.transform = 'scale(' + (1 + 0.06 * g).toFixed(3) + ',' + (1 + 0.05 * g).toFixed(3) + ')'; });
-  q('.mleg').forEach(e => { e.style.transform = 'scale(' + (1 + 0.05 * g).toFixed(3) + ',1)'; });
-  q('.mdef').forEach(e => { e.setAttribute('stroke-width', 4 + g * 0.7); e.setAttribute('opacity', Math.min(1, 0.75 + 0.05 * g)); });
-  ['armL','armR'].forEach(id => $(id).setAttribute('stroke-width', 22 + g * 4.5));
-  ['hlL','hlR'].forEach(id => $(id).setAttribute('stroke-width', 8 + g * 1.6));
-  ['handL','handR'].forEach(id => $(id).setAttribute('r', 11 + g * 0.9));
-}
-
-
-function ik(Sx, Sy, Tx, Ty, a, b) {
-  const dx = Tx - Sx, dy = Ty - Sy;
-  const dist = Math.max(8, Math.min(Math.hypot(dx, dy), a + b - 1));
-  const base = Math.atan2(dy, dx);
-  const ang = Math.acos(Math.max(-1, Math.min(1, (a * a + dist * dist - b * b) / (2 * a * dist))));
-  return { ex: Sx + a * Math.cos(base + ang), ey: Sy + a * Math.sin(base + ang), hx: Sx + dist * Math.cos(base), hy: Sy + dist * Math.sin(base) };
-}
-
-function person(x, dir, i, carry, t, pc, hyWorld, reach) {
-  const h = HELPERS[i], K = 1.25;
-  const moving = t < .4 || t > .6;
-  const ph = t * 42, sw = moving ? Math.sin(ph) : 0, bob = moving ? -Math.abs(Math.cos(ph)) * 2 : 0;
-  const sk = 'url(#hs' + i + ')', sh = 'url(#hsh' + i + ')';
-  const T = reach ? { x: 24, y: (hyWorld - 342) / K } : { x: 20, y: -100 };
-  let s = '<g transform="translate(' + x.toFixed(1) + ' ' + (342 + bob).toFixed(1) + ') scale(' + (dir * K) + ' ' + K + ')">';
-  s += '<ellipse cx="0" cy="2" rx="24" ry="4" fill="#000" opacity=".35"/>';
-  // legs
-  [[-1, shade(h.skin, .7)], [1, h.skin]].forEach(([side, col]) => {
-    const a1 = sw * side * 0.5, hipx = -2, hipy = -74;
-    const kx = hipx + 38 * Math.sin(a1), ky = hipy + 38 * Math.cos(a1);
-    const b1 = a1 - (a1 > 0 ? a1 * 0.9 : a1 * 0.2);
-    const ax = kx + 38 * Math.sin(b1), ay = ky + 38 * Math.cos(b1);
-    s += '<path d="M' + hipx + ' ' + hipy + ' L' + kx.toFixed(1) + ' ' + ky.toFixed(1) + ' L' + ax.toFixed(1) + ' ' + ay.toFixed(1) + '" fill="none" stroke="' + col + '" stroke-width="11" stroke-linecap="round" stroke-linejoin="round"/>';
-    s += '<path d="M' + hipx + ' ' + hipy + ' L' + (hipx + (kx - hipx) * .62).toFixed(1) + ' ' + (hipy + (ky - hipy) * .62).toFixed(1) + '" fill="none" stroke="' + h.shorts + '" stroke-width="17" stroke-linecap="round"/>';
-    s += '<ellipse cx="' + (ax + 5).toFixed(1) + '" cy="' + (ay + 2).toFixed(1) + '" rx="10" ry="4.5" fill="#f2f2f2" stroke="#111" stroke-width="1.5"/><rect x="' + (ax - 5).toFixed(1) + '" y="' + (ay + 4.5).toFixed(1) + '" width="20" height="2.5" fill="#111"/>';
+  // =========================================================
+  // BUTTONS + LOOP
+  // =========================================================
+  $('startBtn').addEventListener('click', startGame);
+  $('againBtn').addEventListener('click', startGame);
+  $('menuBtn').addEventListener('click', () => {
+    $('endScreen').classList.remove('show'); $('startScreen').classList.add('show'); state = 'menu';
+    renderPreviews();
   });
-  // far arm
-  const far = ik(-3, -136, T.x - 5, T.y + 2, 40, 40);
-  s += '<path d="M-3 -136 L' + far.ex.toFixed(1) + ' ' + far.ey.toFixed(1) + ' L' + far.hx.toFixed(1) + ' ' + far.hy.toFixed(1) + '" fill="none" stroke="' + shade(h.skin, .7) + '" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>';
-  // torso
-  s += '<path d="M-14 -138 Q2 -148 17 -138 L14 -78 L-12 -78 Z" fill="' + sh + '"/>';
-  s += '<path d="M-12 -118 Q2 -112 14 -118" fill="none" stroke="#000" stroke-opacity=".18" stroke-width="2"/>';
-  s += '<rect x="-13" y="-82" width="28" height="12" rx="3" fill="' + h.shorts + '"/><rect x="-13" y="-82" width="28" height="3" fill="#fff" opacity=".35"/>';
-  // neck + head
-  s += '<rect x="-4" y="-152" width="9" height="12" fill="' + shade(h.skin, .75) + '"/>';
-  s += '<ellipse cx="2" cy="-163" rx="11" ry="13.5" fill="' + sk + '"/><circle cx="-8" cy="-162" r="3" fill="' + h.skin + '"/>';
-  s += '<path d="M-10 -165 Q-9 -180 3 -178 Q14 -177 13 -165 Q8 -171 -2 -170 Q-8 -170 -10 -165Z" fill="' + h.hair + '"/>';
-  s += '<path d="M5 -167 L11 -166" stroke="#150c08" stroke-width="2" stroke-linecap="round"/><circle cx="8" cy="-163" r="1.6" fill="#150c08"/>';
-  s += '<path d="M12 -161 L14 -158 L11 -158" fill="none" stroke="' + shade(h.skin, .6) + '" stroke-width="1.3"/><path d="M5 -154 L10 -154" stroke="#3a1a10" stroke-width="1.5" stroke-linecap="round"/>';
-  // near arm
-  const near = ik(5, -136, T.x, T.y, 40, 40);
-  s += '<path d="M5 -136 L' + near.ex.toFixed(1) + ' ' + near.ey.toFixed(1) + ' L' + near.hx.toFixed(1) + ' ' + near.hy.toFixed(1) + '" fill="none" stroke="' + sk + '" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>';
-  s += '<path d="M5 -136 L' + (5 + (near.ex - 5) * .45).toFixed(1) + ' ' + (-136 + (near.ey + 136) * .45).toFixed(1) + '" fill="none" stroke="' + sh + '" stroke-width="14" stroke-linecap="round"/>';
-  s += '<circle cx="' + near.hx.toFixed(1) + '" cy="' + near.hy.toFixed(1) + '" r="5.5" fill="' + h.skin + '"/>';
-  if (carry) {
-    const ph2 = pc === 10 ? 44 : 60;
-    s += '<rect x="' + (near.hx - 4).toFixed(1) + '" y="' + (near.hy - ph2 / 2).toFixed(1) + '" width="8" height="' + ph2 + '" rx="2.5" fill="url(#pl' + pc + ')" stroke="#0b0b0c" stroke-width="1.2"/>';
-    s += '<circle cx="' + near.hx.toFixed(1) + '" cy="' + near.hy.toFixed(1) + '" r="5.5" fill="' + h.skin + '"/>';
+
+  let last = performance.now();
+  function frame(t) {
+    const dt = Math.min(0.05, (t - last) / 1000); last = t;
+    update(dt);
+    draw();
+    drawConfetti(dt);
+    requestAnimationFrame(frame);
   }
-  return s + '</g>';
-}
 
-function drawHelpers(t) {
-  const L = LIFTS[lift];
-  const tx = { L: Math.max(20, 100 - PW * loadN - 26), R: Math.min(280, 200 + PW * loadN + 26) };
-  const prog = t < .4 ? t / .4 : (t < .6 ? 1 : 1 - (t - .6) / .4);
-  const reach = t >= .4 && t <= .6;
-  const hy = reach ? Math.max(120, Math.min(300, cur)) : 268;
-  let s = '';
-  [['L', -1], ['R', 1]].forEach(([k, sg], i) => {
-    const edge = sg < 0 ? -40 : 340;
-    s += person(edge + (tx[k] - edge) * prog, -sg, i, t < .5, t, pendingPlate, hy, reach);
-  });
-  $('helpG').innerHTML = s;
-}
+  newGame();
+  resize();
+  renderPreviews(); renderWorkouts(); refreshBest(); updateHud();
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { renderBackground(); renderPreviews(); });
+  requestAnimationFrame(frame);
 
-function startRack() {
-  state = 'rack'; rackT = 0; target = LIFTS[lift].high; newPR();
-  $('hint').textContent = 'Re-racking...';
-}
-
-function startLoad() {
-  const save = plates.slice();
-  addPlates();
-  pendingAfter = plates.slice();
-  plates = save;
-  const rest = save.slice();
-  pendingPlate = pendingAfter[0];
-  pendingAfter.forEach(v => { const i = rest.indexOf(v); if (i < 0) pendingPlate = v; else rest.splice(i, 1); });
-  loadN = Math.min(MAXP, save.length + 1);
-  loadT = 0; placed = false; state = 'load';
-  target = LIFTS[lift].low;
-  $('hint').textContent = 'Spotters adding plates...';
-}
-
-function newPR() {
-  growMuscles();
-  savePR();
-  $('bannerSub').textContent = 'LEVEL ' + (Math.floor(reps / 20) + 1) + '  ' + weightNow() + ' LB  x ' + reps;
-  $('fname').textContent = FIGHTERS[fi].name + '  LV ' + (Math.floor(reps / 20) + 1);
-  const b = $('banner');
-  b.classList.remove('show'); void b.offsetWidth; b.classList.add('show');
-  if (navigator.vibrate) navigator.vibrate([80, 40, 80, 40, 200]);
-}
-
-function rep() {
-  if (state !== 'play') return;
-  running = true;
-  reps++;
-  $('reps').textContent = reps;
-  lastTap = performance.now(); grip = 100;
-  const L = LIFTS[lift];
-  target = L.high;
-  setTimeout(() => { if (state === 'play') target = L.low; }, 190);
-  const m = document.querySelector('#bodyG .mouth');
-  if (m) { m.setAttribute('height', 11); setTimeout(() => m.setAttribute('height', 5), 200); }
-  const st = $('stage');
-  st.classList.remove('shake', 'crack'); void st.offsetWidth; st.classList.add('shake');
-  if (navigator.vibrate) navigator.vibrate(15);
-  const left = nextPlateAt - reps;
-  $('hint').textContent = 'Plates in ' + left + ' reps. Keep tapping!';
-
-  if (reps % 100 === 0) { nextPlateAt = reps + plateGap(reps); startLoad(); }
-  else if (reps === nextPlateAt) {
-    nextPlateAt = reps + plateGap(reps);
-    addPlates();
-    buildBar(plates.indexOf(Math.min.apply(null, plates)) + 1);
-    if (reps % 20 === 0) startRack();
-    else cue(CUES[Math.floor(Math.random() * CUES.length)]);
-  }
-  else if (reps % 20 === 0) startRack();
-}
-
-function renderFighters() {
-  $('fighters').innerHTML = FIGHTERS.map((f, i) =>
-    '<button class="fighter' + (i === fi ? ' sel' : '') + '" data-i="' + i + '"><svg viewBox="46 22 208 150">' + standing(f, i, true) + '</svg>' + f.name + '</button>').join('');
-  document.querySelectorAll('.fighter').forEach(b => b.addEventListener('click', () => {
-    fi = +b.dataset.i;
-    try { localStorage.setItem('tapkombat-fighter', fi); } catch (e) {}
-    renderFighters();
-  }));
-}
-
-function renderPicks() {
-  $('picks').innerHTML = Object.keys(LIFTS).map(k => '<button class="pick" data-lift="' + k + '">' + LIFTS[k].name + '<small id="pr_' + k + '"></small></button>').join('');
-  document.querySelectorAll('.pick').forEach(b => b.addEventListener('click', () => startLift(b.dataset.lift)));
-}
-
-function updateMenu() {
-  Object.keys(LIFTS).forEach(k => { $('pr_' + k).textContent = best[k] ? 'Best PR: ' + best[k] + ' lb' : 'Best PR: none yet'; });
-}
-
-$('finish').addEventListener('click', e => {
-  e.stopPropagation();
-  if (state !== 'play') return;
-  state = 'end'; running = false;
-  $('endTitle').textContent = 'FLAWLESS VICTORY';
-  $('endText').textContent = FIGHTERS[fi].name + ' did ' + reps + ' reps of ' + LIFTS[lift].name.toLowerCase() + ' with ' + weightNow() + ' lb on the bar.' + (best[lift] ? ' Best PR: ' + best[lift] + ' lb.' : '');
-  updateMenu();
-  show('endScreen');
-});
-$('again').addEventListener('click', () => startLift(lift));
-$('other').addEventListener('click', () => { state = 'menu'; updateMenu(); show('menu'); });
-$('play').addEventListener('pointerdown', e => { if (e.target.id !== 'finish') rep(); });
-window.addEventListener('keydown', e => { if (e.code === 'Space') { e.preventDefault(); rep(); } });
-buildDefs();
-renderFighters();
-renderPicks();
-updateMenu();
-requestAnimationFrame(loop);
+  window.__iron = { get G() { return G; }, tap, loadState, LOAD_T };
+})();
 </script>
 </body>
 </html>
