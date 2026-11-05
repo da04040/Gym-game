@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>Tap Kombat</title>
+<style>
+  :root { --bg:#0b0405; --blood:#b3000f; --gold:#e0a82e; --bone:#f1e6d0; --dim:#8a7a6a; }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; user-select:none; }
+  html, body { margin:0; height:100%; background:var(--bg); color:var(--bone); font-family:Impact, "Arial Black", sans-serif; overflow:hidden; touch-action:manipulation; }
+  #app { height:100%; max-width:480px; margin:0 auto; display:flex; flex-direction:column; padding:12px; }
+  .screen { display:none; flex:1; flex-direction:column; min-height:0; }
+  .screen.on { display:flex; }
+  #menu { overflow-y:auto; }
+  h1 { font-size:46px; margin:6px 0 0; line-height:.95; color:var(--gold); text-shadow:0 3px 0 var(--blood), 0 0 24px rgba(255,106,0,.45); letter-spacing:2px; font-weight:normal; }
+  .sub { font-family:Arial, sans-serif; color:var(--dim); font-size:14px; margin:8px 0 12px; }
+  .row { display:flex; gap:8px; margin-bottom:12px; }
+  .fighter { flex:1; background:#150304; border:3px solid #4a2a1a; color:var(--bone); padding:0 0 6px; font:inherit; font-size:15px; cursor:pointer; overflow:hidden; }
+  .fighter.sel { border-color:var(--gold); background:#2a0709; }
+  .fighter svg { width:100%; height:84px; display:block; background:linear-gradient(#2b2b30,#121214); }
+  .picks { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .pick { background:linear-gradient(#2a0709,#150304); border:3px solid var(--gold); color:var(--bone); padding:10px 12px; text-align:left; font:inherit; font-size:19px; letter-spacing:1px; cursor:pointer; clip-path:polygon(0 0,calc(100% - 12px) 0,100% 12px,100% 100%,12px 100%,0 calc(100% - 12px)); }
+  .pick small { display:block; font-family:Arial, sans-serif; font-size:12px; color:var(--gold); margin-top:3px; letter-spacing:0; }
+  .pick:active { background:var(--blood); }
+  .hud { display:flex; justify-content:space-between; align-items:flex-end; }
+  .big { font-size:46px; line-height:1; color:var(--gold); }
+  .lbl { font-family:Arial, sans-serif; font-size:12px; color:var(--dim); letter-spacing:1px; }
+  .health { height:16px; background:#3a0a0e; border:3px solid var(--gold); margin:6px 6px 10px; transform:skewX(-18deg); overflow:hidden; }
+  .health i { display:block; height:100%; width:70%; background:linear-gradient(#ffe27a,#e0a82e); }
+  .health.low i { background:linear-gradient(#ff7b7b,#d00018); }
+  #stage { flex:1; min-height:0; position:relative; overflow:hidden; border:3px solid var(--blood); background:#121214; }
+  #stage.shake { animation:shake .12s; }
+  #stage.crack { animation:shake .5s; }
+  @keyframes shake { 0%{transform:translate(0,0)} 25%{transform:translate(-5px,4px)} 50%{transform:translate(5px,-4px)} 75%{transform:translate(-3px,-3px)} 100%{transform:translate(0,0)} }
+  #scene { width:100%; height:100%; display:block; }
+  .plate.new { animation:pop .3s ease-out; transform-box:fill-box; transform-origin:center; }
+  @keyframes pop { from { transform:scale(0); } to { transform:scale(1); } }
+  #cue { position:absolute; top:6%; left:0; right:0; text-align:center; font-size:42px; color:var(--gold); text-shadow:0 3px 0 var(--blood); opacity:0; pointer-events:none; }
+  #cue.show { animation:cue .8s ease-out; }
+  @keyframes cue { 0% { opacity:1; transform:scale(.6); } 20% { transform:scale(1.15); } 100% { opacity:0; transform:scale(1) translateY(-24px); } }
+  #banner { position:absolute; inset:0; display:none; flex-direction:column; align-items:center; justify-content:center; background:rgba(11,4,5,.78); text-align:center; pointer-events:none; }
+  #banner.show { display:flex; animation:flash 1.3s forwards; }
+  #banner h2 { font-size:80px; margin:0; font-weight:normal; color:var(--gold); text-shadow:0 4px 0 var(--blood), 0 0 30px #ff6a00; }
+  #banner p { margin:6px 0 0; font-size:24px; color:var(--bone); letter-spacing:2px; }
+  @keyframes flash { 0% { opacity:0; transform:scale(.4); } 15% { opacity:1; transform:scale(1.1); } 25% { transform:scale(1); } 80% { opacity:1; } 100% { opacity:0; } }
+  #foot { display:flex; justify-content:space-between; align-items:center; padding-top:8px; }
+  #foot span { font-family:Arial, sans-serif; color:var(--dim); font-size:13px; }
+  .btn { background:var(--blood); color:var(--bone); border:2px solid var(--gold); padding:10px 18px; font:inherit; font-size:16px; letter-spacing:1px; cursor:pointer; }
+  button:focus-visible { outline:3px solid #fff; outline-offset:3px; }
+  #endScreen { align-items:center; justify-content:center; text-align:center; }
+  #endScreen h2 { font-size:52px; margin:0 0 6px; font-weight:normal; color:var(--gold); text-shadow:0 3px 0 var(--blood); }
+  #endScreen p { font-family:Arial, sans-serif; font-size:18px; margin:6px 0; }
+  #endScreen .btn { width:100%; padding:16px; font-size:20px; margin-top:14px; }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute"><defs id="defs"></defs></svg>
+<div id="app">
+
+  <div id="menu" class="screen on">
+    <h1>TAP KOMBAT</h1>
+    <p class="sub">Pick a fighter and an exercise. Tap to rep. Stop tapping and the bar breaks. Every rep gets harder.</p>
+    <div class="row" id="fighters"></div>
+    <div class="picks" id="picks"></div>
+  </div>
+
+  <div id="play" class="screen">
+    <div class="hud">
+      <div><div class="lbl" id="liftName"></div><div class="big"><span id="weight">45</span><span class="lbl"> LB</span></div></div>
+      <div style="text-align:right"><div class="lbl" id="fname"></div><div class="big" id="reps">0</div></div>
+    </div>
+    <div class="health" id="gripWrap"><i id="grip"></i></div>
+    <div id="stage">
+      <svg id="scene" viewBox="0 0 300 360" preserveAspectRatio="xMidYMid meet">
+        <g id="bgG"></g>
+        <g id="helpG"></g>
+        <g id="bodyG"></g>
+        <path id="armL" fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="22"/>
+        <path id="armR" fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="22"/>
+        <path id="hlL" fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="8" stroke="#fff" opacity=".22"/>
+        <path id="hlR" fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="8" stroke="#fff" opacity=".22"/>
+        <g id="barG"><g id="barL"></g><g id="barR"></g></g>
+        <circle id="handL" r="11"/><circle id="handR" r="11"/>
+      </svg>
+      <div id="cue"></div>
+      <div id="banner"><h2>NEW PR!</h2><p id="bannerSub"></p></div>
+    </div>
+    <div id="foot"><span id="hint">Tap to start. Keep tapping!</span><button class="btn" id="finish">FINISH HIM</button></div>
+  </div>
+
+  <div id="endScreen" class="screen">
+    <h2 id="endTitle">FLAWLESS VICTORY</h2>
+    <p id="endText"></p>
+    <button class="btn" id="again">FIGHT AGAIN</button>
+    <button class="btn" id="other" style="background:#150304">CHANGE LIFT OR FIGHTER</button>
+  </div>
+
+</div>
+
+<script>
+const FIGHTERS = [
+  { name:'TITAN', skin:'#7a4a2e', dark:'#3f2113', trunks:'#e0a82e', hair:'bald' },
+  { name:'BULL',  skin:'#c98a5b', dark:'#7d4a28', trunks:'#c4101f', hair:'short' },
+  { name:'OAK',   skin:'#e8b894', dark:'#a8704a', trunks:'#2e7d4a', hair:'wave' }
+];
+const HELPERS = [
+  { skin:'#8a5a3b', hair:'#120c08', shirt:'#c4101f', shorts:'#1c1c22' },
+  { skin:'#e0b090', hair:'#6b4a24', shirt:'#2a6fd6', shorts:'#2b2b33' }
+];
+const LIFTS = {
+  bench: { type:'bench', name:'BENCH PRESS', base:[],   adds:[10,25,35,45], low:238, high:132, hand:42, shoulder:68, sy:262 },
+  dead:  { type:'dead',  name:'DEADLIFT',    base:[45],  adds:[45,45,45,45], low:254, high:212, hand:42, shoulder:56, sy:114 },
+  squat: { type:'squat', name:'SQUAT',       base:[25],  adds:[25,35,45,45], low:104, high:164, hand:48, shoulder:56, sy:114 },
+  curl:  { type:'curl',  name:'BARBELL CURL',base:[],    adds:[10,10,25,25], low:216, high:128, hand:40, shoulder:56, sy:114 },
+  press: { type:'press', name:'OVERHEAD PRESS', base:[], adds:[10,25,25,35], low:112, high:52, hand:44, shoulder:56, sy:114 },
+  shrug: { type:'shrug', name:'SHRUGS',      base:[45],  adds:[45,45,45,45], low:226, high:192, hand:44, shoulder:56, sy:114 }
+};
+const TIERS = [10,25,35,45,55,70,90,110];
+const TCOL = { 10:'#e6e6e6', 25:'#2e9e4f', 35:'#e3c52b', 45:'#2a6fd6', 55:'#d42a2a', 70:'#8a3fc7', 90:'#e8741c', 110:'#d9b13a' };
+const CUES = ['BRUTAL!', 'EXCELLENT!', 'OUTSTANDING!', 'TOASTY!', 'BIGGER!'];
+const PW = 10, MAXP = 8, TAP_GAIN = 18;
+function paceNeeded() { return 0.8 + 0.04 * reps; }
+
+let lift = 'bench', fi = 0, reps = 0, plates = [], best = {};
+let nextPlateAt = 5, lastTap = 0;
+function plateGap(r) { return Math.min(20, 5 + 3 * Math.floor(r / 20)); }
+let loadT = 0, rackT = 0, placed = false, loadN = 0, pendingAfter = [], pendingPlate = 25;
+let cur = 0, target = 0, grip = 70, running = false, state = 'menu', last = 0, started = false;
+try { best = JSON.parse(localStorage.getItem('tapkombat-pr')) || {}; } catch (e) {}
+try { fi = parseInt(localStorage.getItem('tapkombat-fighter')) || 0; } catch (e) {}
+
+const $ = id => document.getElementById(id);
+const screens = ['menu','play','endScreen'];
+function show(id) { screens.forEach(s => $(s).classList.toggle('on', s === id)); }
+function weightNow() { return 45 + 2 * plates.reduce((a, b) => a + b, 0); }
+function shade(hex, f) {
+  const n = parseInt(hex.slice(1), 16);
+  const c = [n >> 16, (n >> 8) & 255, n & 255].map(v => Math.max(0, Math.min(255, Math.round(v * f))));
+  return '#' + c.map(v => v.toString(16).padStart(2, '0')).join('');
+}
+
+function buildDefs() {
+  let d = '';
+  d += '<linearGradient id="steel" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f4f4f4"/><stop offset=".5" stop-color="#a9adb4"/><stop offset="1" stop-color="#55585f"/></linearGradient>';
+  d += '<linearGradient id="chrome" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff"/><stop offset=".4" stop-color="#c3c7ce"/><stop offset="1" stop-color="#5f636b"/></linearGradient>';
+  d += '<pattern id="knurl" width="3" height="3" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="3" height="3" fill="#9a9ea6"/><rect width="1.2" height="3" fill="#42454c"/></pattern>';
+  d += '<linearGradient id="wall" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1b1b1f"/><stop offset="1" stop-color="#34343a"/></linearGradient>';
+  d += '<linearGradient id="floor" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2a2a2e"/><stop offset="1" stop-color="#0e0e10"/></linearGradient>';
+  d += '<linearGradient id="wood" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#b98b55"/><stop offset="1" stop-color="#6e4b27"/></linearGradient>';
+  d += '<radialGradient id="spot" cx=".5" cy="0" r="1"><stop offset="0" stop-color="#fff" stop-opacity=".35"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>';
+  d += '<linearGradient id="pad" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2d2d33"/><stop offset="1" stop-color="#121215"/></linearGradient>';
+  d += '<linearGradient id="mirror" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#7d8c98"/><stop offset=".45" stop-color="#34414b"/><stop offset=".55" stop-color="#5c6b77"/><stop offset="1" stop-color="#27313a"/></linearGradient>';
+  d += '<linearGradient id="gold" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffd54a"/><stop offset="1" stop-color="#b98300"/></linearGradient>';
+  TIERS.forEach(t => {
+    const c = TCOL[t];
+    d += '<linearGradient id="pl' + t + '" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="' + shade(c, .45) + '"/><stop offset=".28" stop-color="' + c + '"/><stop offset=".5" stop-color="' + shade(c, 1.35) + '"/><stop offset=".72" stop-color="' + c + '"/><stop offset="1" stop-color="' + shade(c, .45) + '"/></linearGradient>';
+  });
+  FIGHTERS.forEach((f, i) => {
+    d += '<linearGradient id="sk' + i + '" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="' + shade(f.skin, .62) + '"/><stop offset=".28" stop-color="' + f.skin + '"/><stop offset=".5" stop-color="' + shade(f.skin, 1.18) + '"/><stop offset=".72" stop-color="' + f.skin + '"/><stop offset="1" stop-color="' + shade(f.skin, .62) + '"/></linearGradient>';
+    d += '<radialGradient id="dl' + i + '" cx=".4" cy=".35" r=".75"><stop offset="0" stop-color="' + shade(f.skin, 1.2) + '"/><stop offset=".6" stop-color="' + f.skin + '"/><stop offset="1" stop-color="' + shade(f.skin, .6) + '"/></radialGradient>';
+  });
+  HELPERS.forEach((h, i) => {
+    d += '<linearGradient id="hs' + i + '" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="' + shade(h.skin, .65) + '"/><stop offset=".45" stop-color="' + shade(h.skin, 1.1) + '"/><stop offset="1" stop-color="' + shade(h.skin, .8) + '"/></linearGradient>';
+    d += '<linearGradient id="hsh' + i + '" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="' + shade(h.shirt, .6) + '"/><stop offset=".5" stop-color="' + shade(h.shirt, 1.15) + '"/><stop offset="1" stop-color="' + shade(h.shirt, .75) + '"/></linearGradient>';
+  });
+  $('defs').innerHTML = d;
+}
+
+function head(f, i, cx, cy) {
+  const sk = 'url(#dl' + i + ')';
+  let s = '<rect x="' + (cx - 24) + '" y="' + (cy - 26) + '" width="48" height="54" rx="22" fill="' + sk + '"/>';
+  s += '<ellipse cx="' + (cx - 25) + '" cy="' + cy + '" rx="5" ry="8" fill="' + f.skin + '"/><ellipse cx="' + (cx + 25) + '" cy="' + cy + '" rx="5" ry="8" fill="' + f.skin + '"/>';
+  if (f.hair === 'short') s += '<path d="M' + (cx - 25) + ' ' + (cy - 6) + ' Q' + (cx - 24) + ' ' + (cy - 38) + ' ' + cx + ' ' + (cy - 36) + ' Q' + (cx + 24) + ' ' + (cy - 38) + ' ' + (cx + 25) + ' ' + (cy - 6) + ' Q' + cx + ' ' + (cy - 20) + ' ' + (cx - 25) + ' ' + (cy - 6) + 'Z" fill="#1a1210"/>';
+  if (f.hair === 'wave') s += '<path d="M' + (cx - 26) + ' ' + (cy - 2) + ' Q' + (cx - 22) + ' ' + (cy - 44) + ' ' + (cx + 4) + ' ' + (cy - 38) + ' Q' + (cx + 28) + ' ' + (cy - 34) + ' ' + (cx + 26) + ' ' + (cy - 2) + ' Q' + cx + ' ' + (cy - 20) + ' ' + (cx - 26) + ' ' + (cy - 2) + 'Z" fill="#c9a443"/>';
+  if (f.hair === 'bald') s += '<path d="M' + (cx - 18) + ' ' + (cy + 14) + ' Q' + cx + ' ' + (cy + 34) + ' ' + (cx + 18) + ' ' + (cy + 14) + ' Q' + cx + ' ' + (cy + 22) + ' ' + (cx - 18) + ' ' + (cy + 14) + 'Z" fill="#150c08"/>';
+  s += '<path d="M' + (cx - 19) + ' ' + (cy - 9) + ' L' + (cx - 4) + ' ' + (cy - 4) + ' M' + (cx + 19) + ' ' + (cy - 9) + ' L' + (cx + 4) + ' ' + (cy - 4) + '" stroke="#150c08" stroke-width="4" stroke-linecap="round"/>';
+  s += '<ellipse cx="' + (cx - 10) + '" cy="' + (cy + 1) + '" rx="3.5" ry="2.4" fill="#fff"/><ellipse cx="' + (cx + 10) + '" cy="' + (cy + 1) + '" rx="3.5" ry="2.4" fill="#fff"/>';
+  s += '<circle cx="' + (cx - 9) + '" cy="' + (cy + 1) + '" r="1.6" fill="#150c08"/><circle cx="' + (cx + 11) + '" cy="' + (cy + 1) + '" r="1.6" fill="#150c08"/>';
+  s += '<path d="M' + cx + ' ' + (cy + 2) + ' L' + (cx - 3) + ' ' + (cy + 11) + ' L' + (cx + 3) + ' ' + (cy + 11) + '" stroke="' + f.dark + '" stroke-width="2" fill="none" stroke-linejoin="round"/>';
+  s += '<rect class="mouth" x="' + (cx - 9) + '" y="' + (cy + 15) + '" width="18" height="5" rx="2.5" fill="#2a0709" stroke="#fff" stroke-width=".8"/>';
+  return s;
+}
+
+function standing(f, i, armsDown) {
+  const sk = 'url(#sk' + i + ')', d = f.dark;
+  let s = '';
+  s += '<g class="mleg" style="transform-origin:150px 270px;transition:transform .6s">';
+  s += '<path d="M111 206 Q104 255 114 306 H147 Q152 255 147 206Z" fill="' + sk + '"/><path d="M153 206 Q148 255 153 306 H186 Q196 255 189 206Z" fill="' + sk + '"/>';
+  s += '<path d="M114 228 Q108 262 120 296 M186 228 Q192 262 180 296" stroke="' + d + '" stroke-width="3" fill="none" opacity=".6" stroke-linecap="round"/>';
+  s += '<path d="M116 306 Q112 326 120 342 H144 Q150 326 146 306Z M154 306 Q150 326 156 342 H180 Q188 326 184 306Z" fill="' + sk + '"/>';
+  s += '<path d="M118 312 Q124 322 118 336 M182 312 Q176 322 182 336" stroke="' + d + '" stroke-width="3" fill="none" opacity=".6"/>';
+  s += '<ellipse cx="130" cy="346" rx="24" ry="8" fill="#0b0b0c"/><ellipse cx="170" cy="346" rx="24" ry="8" fill="#0b0b0c"/>';
+  s += '</g>';
+  s += '<path d="M90 100 Q150 84 210 100 L190 210 Q150 222 110 210Z" fill="' + sk + '"/>';
+  s += '<path d="M116 92 Q150 66 184 92 L160 104 Q150 96 140 104Z" fill="' + d + '" opacity=".4"/>';
+  s += '<g class="mpec" style="transform-origin:150px 130px;transition:transform .6s">';
+  s += '<path d="M150 114 Q122 104 98 124 Q104 160 150 158Z M150 114 Q178 104 202 124 Q196 160 150 158Z" fill="' + sk + '" stroke="' + d + '" stroke-width="1.5" stroke-opacity=".6"/>';
+  s += '<path class="mdef" d="M100 144 Q126 168 150 158 Q174 168 200 144" stroke="' + d + '" stroke-width="4" fill="none" stroke-linecap="round" opacity=".75"/>';
+  s += '<ellipse cx="126" cy="128" rx="15" ry="8" fill="#fff" opacity=".14"/><ellipse cx="174" cy="128" rx="15" ry="8" fill="#fff" opacity=".14"/>';
+  s += '</g>';
+  s += '<rect x="138" y="160" width="24" height="46" fill="' + d + '" opacity=".4"/>';
+  [[139,163],[151,163],[139,177],[151,177],[140,191],[151,191]].forEach(p => { s += '<rect x="' + p[0] + '" y="' + p[1] + '" width="10" height="11" rx="4" fill="' + sk + '" stroke="' + d + '" stroke-opacity=".35"/>'; });
+  s += '<path d="M104 150 l10 6 M102 163 l11 6 M104 176 l10 6 M196 150 l-10 6 M198 163 l-11 6 M196 176 l-10 6" stroke="' + d + '" stroke-width="2.5" opacity=".55" stroke-linecap="round"/>';
+  s += '<path d="M108 204 H192 L196 244 L150 234 L104 244Z" fill="' + f.trunks + '"/><rect x="108" y="204" width="84" height="7" fill="#000" opacity=".35"/><path d="M118 216 L126 240 M182 216 L174 240" stroke="#000" stroke-opacity=".25" stroke-width="3"/>';
+  s += '<circle class="mdelt" style="transform-origin:93px 114px;transition:transform .6s" cx="93" cy="114" r="23" fill="url(#dl' + i + ')"/><circle class="mdelt" style="transform-origin:207px 114px;transition:transform .6s" cx="207" cy="114" r="23" fill="url(#dl' + i + ')"/>';
+  s += '<path d="M90 106 Q94 124 100 128 M210 106 Q206 124 200 128" stroke="' + d + '" stroke-width="2.5" fill="none" opacity=".6"/>';
+  s += '<rect x="136" y="74" width="28" height="28" fill="' + d + '"/><path d="M136 82 Q150 98 164 82" fill="none" stroke="#000" stroke-opacity=".25" stroke-width="3"/>';
+  s += head(f, i, 150, 56);
+  if (armsDown) {
+    [[94,114,84,200],[206,114,216,200]].forEach(a => {
+      s += '<path d="M' + a[0] + ' ' + a[1] + ' L' + a[2] + ' ' + a[3] + '" stroke="' + f.skin + '" stroke-width="22" stroke-linecap="round"/><path d="M' + (a[0] - 3) + ' ' + a[1] + ' L' + (a[2] - 3) + ' ' + a[3] + '" stroke="#fff" opacity=".2" stroke-width="7" stroke-linecap="round"/>';
+    });
+  }
+  return s;
+}
+
+function lying(f, i) {
+  const sk = 'url(#sk' + i + ')', d = f.dark;
+  let s = '<rect x="104" y="296" width="10" height="40" fill="#222"/><rect x="186" y="296" width="10" height="40" fill="#222"/>';
+  s += '<rect x="90" y="126" width="120" height="176" rx="12" fill="url(#pad)" stroke="#555" stroke-width="2"/>';
+  s += '<path d="M78 276 Q150 258 222 276 L194 170 Q150 160 106 170Z" fill="' + sk + '"/>';
+  s += '<path d="M150 188 L150 252" stroke="' + d + '" stroke-width="3" fill="none" opacity=".7"/>';
+  s += '<g class="mpec" style="transform-origin:150px 250px;transition:transform .6s">';
+  s += '<path d="M150 248 Q118 250 96 232 Q92 262 150 268Z M150 248 Q182 250 204 232 Q208 262 150 268Z" fill="' + sk + '" stroke="' + d + '" stroke-opacity=".6" stroke-width="1.5"/>';
+  s += '<path d="M98 244 Q124 270 150 266 Q176 270 202 244" stroke="' + d + '" stroke-width="4" fill="none" opacity=".7" stroke-linecap="round"/>';
+  s += '<ellipse cx="124" cy="250" rx="16" ry="7" fill="#fff" opacity=".14"/><ellipse cx="176" cy="250" rx="16" ry="7" fill="#fff" opacity=".14"/>';
+  s += '</g>';
+  [[139,190],[151,190],[139,203],[151,203],[140,216],[151,216]].forEach(p => { s += '<rect x="' + p[0] + '" y="' + p[1] + '" width="10" height="10" rx="4" fill="' + sk + '" stroke="' + d + '" stroke-opacity=".35"/>'; });
+  s += '<path d="M110 172 H190 L194 148 H106Z" fill="' + f.trunks + '"/>';
+  s += '<circle class="mdelt" style="transform-origin:80px 266px;transition:transform .6s" cx="80" cy="266" r="23" fill="url(#dl' + i + ')"/><circle class="mdelt" style="transform-origin:220px 266px;transition:transform .6s" cx="220" cy="266" r="23" fill="url(#dl' + i + ')"/>';
+  s += '<rect x="136" y="268" width="28" height="26" fill="' + d + '"/>';
+  return s + head(f, i, 150, 308);
+}
+
+function background() {
+  let s = '<rect width="300" height="360" fill="#0d0d0f"/>';
+  s += '<rect x="0" y="56" width="300" height="276" fill="url(#mirror)"/>';
+  for (let x = 0; x <= 300; x += 75) s += '<rect x="' + (x - 1.5) + '" y="56" width="3" height="276" fill="#050506"/>';
+  [[30,56,90,332],[190,56,250,332],[120,56,150,332]].forEach(g => { s += '<path d="M' + g[0] + ' ' + g[1] + ' L' + (g[0] + 22) + ' ' + g[1] + ' L' + g[2] + ' ' + g[3] + ' L' + (g[2] - 22) + ' ' + g[3] + 'Z" fill="#fff" opacity=".05"/>'; });
+  s += '<rect y="0" width="300" height="56" fill="#0d0d0f"/><rect y="52" width="300" height="5" fill="url(#gold)"/><rect y="56" width="300" height="3" fill="#000" opacity=".5"/>';
+  s += '<rect x="78" y="10" width="144" height="34" rx="3" fill="#000" stroke="url(#gold)" stroke-width="3"/>';
+  s += '<text x="150" y="34" font-family="Impact, Arial Black, sans-serif" font-size="24" fill="url(#gold)" text-anchor="middle" letter-spacing="3">IRON GYM</text>';
+  s += '<rect width="300" height="360" fill="url(#spot)"/>';
+  s += '<rect y="330" width="300" height="30" fill="#0a0a0b"/><rect y="330" width="300" height="3" fill="url(#gold)"/>';
+  for (let x = 0; x < 300; x += 30) s += '<rect x="' + x + '" y="336" width="1" height="24" fill="#fff" opacity=".06"/>';
+  s += '<rect x="4" y="296" width="40" height="5" fill="#222"/><rect x="6" y="301" width="4" height="30" fill="#222"/><rect x="38" y="301" width="4" height="30" fill="#222"/>';
+  for (let i = 0; i < 4; i++) s += '<rect x="' + (9 + i * 8) + '" y="' + (284 + (i % 2) * 2) + '" width="6" height="12" rx="2" fill="#3a3a40"/><rect x="' + (7 + i * 8) + '" y="288" width="10" height="4" fill="#9a9da5" opacity=".6"/>';
+  const type = LIFTS[lift].type;
+  if (type === 'dead' || type === 'curl' || type === 'shrug' || type === 'press') {
+    s += '<rect x="30" y="336" width="240" height="14" rx="2" fill="url(#wood)"/>';
+    for (let x = 50; x < 270; x += 40) s += '<rect x="' + x + '" y="336" width="1.5" height="14" fill="#000" opacity=".35"/>';
+  } else {
+    const top = type === 'squat' ? 96 : 110;
+    [50, 242].forEach(x => {
+      s += '<rect x="' + x + '" y="' + top + '" width="9" height="' + (336 - top) + '" fill="#2a2b30"/><rect x="' + x + '" y="' + top + '" width="3" height="' + (336 - top) + '" fill="#8a8d98"/>';
+      for (let y = top + 20; y < 330; y += 16) s += '<circle cx="' + (x + 5) + '" cy="' + y + '" r="1.6" fill="#000"/>';
+    });
+    s += '<rect x="50" y="' + (type === 'squat' ? 118 : 270) + '" width="26" height="6" fill="#55585f"/><rect x="224" y="' + (type === 'squat' ? 118 : 270) + '" width="26" height="6" fill="#55585f"/>';
+    if (type === 'squat') s += '<rect x="50" y="300" width="9" height="4" fill="#d9b13a"/><rect x="242" y="300" width="9" height="4" fill="#d9b13a"/>';
+  }
+  return s;
+}
+
+function addPlates() {
+  const L = LIFTS[lift], idx = reps / 5 - 1;
+  if (plates.length < MAXP) plates.push(L.adds[Math.min(idx, L.adds.length - 1)]);
+  else {
+    plates.sort((a, b) => b - a);
+    const k = plates.length - 1, t = TIERS.indexOf(plates[k]);
+    if (t < TIERS.length - 1) plates[k] = TIERS[t + 1];
+    else { for (let j = k; j >= 0; j--) { const tj = TIERS.indexOf(plates[j]); if (tj < TIERS.length - 1) { plates[j] = TIERS[tj + 1]; break; } } }
+  }
+  plates.sort((a, b) => b - a);
+}
+
+function half(side, newest) {
+  const sgn = side === 'L' ? -1 : 1, n = plates.length;
+  const x0 = side === 'L' ? 100 : 200;
+  let s = '';
+  if (side === 'L') s += '<rect x="20" y="-4" width="130" height="8" fill="url(#steel)"/><rect x="108" y="-4.5" width="42" height="9" fill="url(#knurl)"/><rect x="100" y="-5" width="3" height="10" fill="#555"/>';
+  else s += '<rect x="150" y="-4" width="130" height="8" fill="url(#steel)"/><rect x="150" y="-4.5" width="42" height="9" fill="url(#knurl)"/><rect x="197" y="-5" width="3" height="10" fill="#555"/>';
+  s += '<rect x="' + (side === 'L' ? 10 : 200) + '" y="-7.5" width="90" height="15" rx="3" fill="url(#chrome)"/>';
+  plates.forEach((p, i) => {
+    const h = p === 10 ? 92 : 126;
+    const x = side === 'L' ? x0 - PW * (i + 1) : x0 + PW * i;
+    const isNew = newest && i === newest - 1;
+    s += '<g class="plate' + (isNew ? ' new' : '') + '"><rect x="' + x + '" y="' + (-h / 2) + '" width="' + PW + '" height="' + h + '" rx="3" fill="url(#pl' + p + ')" stroke="#0b0b0c" stroke-width="1.2"/>';
+    s += '<rect x="' + (x + 1.5) + '" y="' + (-h / 2 + 5) + '" width="1.5" height="' + (h - 10) + '" fill="#fff" opacity=".3"/>';
+    s += '<text x="' + (x + PW / 2 + 1) + '" y="0" font-size="7" font-family="Arial" font-weight="bold" fill="#000" fill-opacity=".7" text-anchor="middle" dominant-baseline="middle" transform="rotate(-90 ' + (x + PW / 2 + 1) + ' 0)">' + p + '</text></g>';
+  });
+  const cx = side === 'L' ? x0 - PW * n - 8 : x0 + PW * n + 1;
+  s += '<rect x="' + cx + '" y="-9.5" width="7" height="19" rx="2" fill="#17171a" stroke="#8a8d96" stroke-width="1"/><rect x="' + (cx + 1.5) + '" y="-8" width="1.5" height="16" fill="#fff" opacity=".35"/>';
+  return s;
+}
+
+function buildBar(newest) {
+  $('barL').innerHTML = half('L', newest);
+  $('barR').innerHTML = half('R', newest);
+  const bend = 0;
+  ['barL', 'barR'].forEach((id, k) => {
+    const e = $(id);
+    e.style.transformOrigin = '150px 0px';
+    e.style.transition = 'transform .3s';
+    e.style.transform = 'rotate(' + (k === 0 ? -bend : bend) + 'deg)';
+  });
+  $('weight').textContent = weightNow();
+}
+
+function drawFrame() {
+  const L = LIFTS[lift], f = FIGHTERS[fi], type = L.type;
+  const jx = grip < 35 && state === 'play' ? (Math.random() - .5) * 5 * (1 - grip / 35) : 0;
+  $('barG').setAttribute('transform', 'translate(' + jx.toFixed(1) + ' ' + cur.toFixed(1) + ')');
+  let sy = L.sy;
+  if (type === 'squat') {
+    const sc = 1 - (cur - L.low) / 284;
+    sy = 340 + (114 - 340) * sc;
+    $('bodyG').setAttribute('transform', 'translate(0 ' + (340 * (1 - sc)).toFixed(1) + ') scale(1 ' + sc.toFixed(3) + ')');
+  }
+  if (type === 'dead') {
+    const pr = Math.max(0, Math.min(1, (L.low - cur) / (L.low - L.high)));
+    const sc = 1 - 0.07 * (1 - pr);
+    sy = 346 - (346 - 114) * sc;
+    $('bodyG').setAttribute('transform', 'translate(0 ' + (346 * (1 - sc)).toFixed(1) + ') scale(1 ' + sc.toFixed(3) + ')');
+  }
+  const hy = cur;
+  [['L', 150 - L.shoulder, 150 - L.hand + jx], ['R', 150 + L.shoulder, 150 + L.hand + jx]].forEach(([k, sx, hx]) => {
+    const dir = k === 'L' ? -1 : 1;
+    let d;
+    if (type === 'bench') {
+      const t = Math.max(0, Math.min(1, (sy - hy) / 130));
+      d = 'M' + sx + ' ' + sy + ' Q' + (sx + dir * (1 - t) * 50) + ' ' + ((sy + hy) / 2) + ' ' + hx + ' ' + hy;
+    } else if (type === 'squat') d = 'M' + sx + ' ' + sy + ' Q' + (sx + dir * 12) + ' ' + (sy + 42) + ' ' + hx + ' ' + hy;
+    else if (type === 'curl') d = 'M' + sx + ' ' + sy + ' L' + (150 + dir * 66) + ' 176 L' + hx + ' ' + hy;
+    else d = 'M' + sx + ' ' + sy + ' L' + hx + ' ' + hy;
+    $('arm' + k).setAttribute('d', d);
+    $('arm' + k).setAttribute('stroke', f.skin);
+    $('hl' + k).setAttribute('d', d);
+    $('hl' + k).setAttribute('transform', 'translate(' + (dir * 3) + ' 0)');
+    const h = $('hand' + k);
+    h.setAttribute('cx', hx); h.setAttribute('cy', hy); h.setAttribute('fill', f.dark);
+  });
+}
+
+function loop(t) {
+  const dt = Math.min(0.05, (t - last) / 1000 || 0);
+  last = t;
+  if (state === 'load') {
+    loadT += dt / 1.7;
+    if (!placed && loadT >= .5) {
+      placed = true;
+      plates = pendingAfter.slice();
+      buildBar(plates.indexOf(Math.min.apply(null, plates)) + 1);
+    }
+    drawHelpers(Math.min(1, loadT));
+    if (loadT >= 1) {
+      $('helpG').innerHTML = '';
+      if (reps % 20 === 0) { state = 'rack'; rackT = 0; target = LIFTS[lift].high; newPR(); $('hint').textContent = 'Re-racking...'; }
+      else { state = 'play'; lastTap = performance.now(); cue(CUES[Math.floor(Math.random() * CUES.length)]); }
+    }
+  } else if (state === 'rack') {
+    rackT += dt / 1.8;
+    if (rackT >= 1) { state = 'play'; target = LIFTS[lift].low; grip = 100; lastTap = performance.now(); $('hint').textContent = 'Level ' + (Math.floor(reps / 20) + 1) + '. Keep tapping!'; }
+  }
+  if (state === 'play' || state === 'load' || state === 'rack') {
+    if (state === 'play' && running) {
+      const idle = (performance.now() - lastTap) / 1000, allowed = Math.max(0.7, 2.2 - 0.015 * reps);
+      grip = Math.max(0, 100 * (1 - idle / allowed));
+      if (idle >= allowed) { grip = 0; breakBar(); }
+    }
+    $('grip').style.width = Math.max(0, grip) + '%';
+    $('gripWrap').classList.toggle('low', grip < 30);
+    const bend = grip < 35 ? (1 - grip / 35) * 9 : 0;
+    $('barL').style.transition = 'transform .1s';
+    $('barR').style.transition = 'transform .1s';
+    $('barL').style.transform = 'rotate(' + (-bend).toFixed(2) + 'deg)';
+    $('barR').style.transform = 'rotate(' + bend.toFixed(2) + 'deg)';
+    const goingUp = Math.abs(target - LIFTS[lift].low) > Math.abs(target - LIFTS[lift].high);
+    const rate = goingUp ? Math.max(0.1, 0.26 - weightNow() / 3200) : 0.14;
+    cur += (target - cur) * rate;
+    if (Math.abs(target - cur) < 0.2) cur = target;
+    drawFrame();
+  }
+  requestAnimationFrame(loop);
+}
+
+// Difficulty ramps smoothly: drain speeds up and each tap refills a bit less as reps climb
+function drainRate(r) { return TAP_GAIN * (0.8 + 0.04 * r); }
+function tapGain(r) { return TAP_GAIN; }
+
+function cue(text) {
+  const c = $('cue');
+  c.textContent = text;
+  c.classList.remove('show'); void c.offsetWidth; c.classList.add('show');
+}
+
+function savePR() {
+  const w = weightNow();
+  if (w > (best[lift] || 0)) {
+    best[lift] = w;
+    try { localStorage.setItem('tapkombat-pr', JSON.stringify(best)); } catch (e) {}
+  }
+}
+
+function startLift(l) {
+  lift = l; reps = 0; nextPlateAt = 5; grip = 100; running = false; state = 'play';
+  plates = LIFTS[l].base.slice();
+  $('liftName').textContent = LIFTS[l].name;
+  $('fname').textContent = FIGHTERS[fi].name + '  LV 1';
+  $('helpG').innerHTML = '';
+  $('reps').textContent = 0;
+  $('hint').textContent = 'Tap to start. Keep tapping!';
+  $('banner').classList.remove('show');
+  ['armL','armR','hlL','hlR','handL','handR'].forEach(id => { $(id).style.visibility = 'visible'; });
+  $('bgG').innerHTML = background();
+  $('bodyG').removeAttribute('transform');
+  $('bodyG').innerHTML = '<g id="muscle">' + (l === 'bench' ? lying(FIGHTERS[fi], fi) : standing(FIGHTERS[fi], fi, false)) + '</g>';
+  growMuscles();
+  cur = target = LIFTS[l].low;
+  buildBar(0);
+  show('play');
+  cue('FIGHT!');
+}
+
+function breakBar() {
+  state = 'broken'; running = false;
+  $('barL').style.transition = 'transform 1s ease-in';
+  $('barR').style.transition = 'transform 1s ease-in';
+  $('barL').style.transform = 'rotate(-42deg) translateY(150px)';
+  $('barR').style.transform = 'rotate(42deg) translateY(150px)';
+  ['armL','armR','hlL','hlR','handL','handR'].forEach(id => { $(id).style.visibility = 'hidden'; });
+  cue('CRACK!');
+  const st = $('stage');
+  st.classList.remove('shake', 'crack'); void st.offsetWidth; st.classList.add('crack');
+  if (navigator.vibrate) navigator.vibrate([200, 60, 300]);
+  setTimeout(() => {
+    $('endTitle').textContent = 'BAR BROKEN';
+    $('endText').textContent = FIGHTERS[fi].name + ' snapped the bar at ' + weightNow() + ' lb after ' + reps + ' reps.' + (best[lift] ? ' Best PR: ' + best[lift] + ' lb.' : '');
+    updateMenu();
+    show('endScreen');
+  }, 1700);
+}
+
+function growMuscles() {
+  const g = Math.min(6, Math.floor(reps / 20));
+  const q = sel => document.querySelectorAll('#bodyG ' + sel);
+  q('.mdelt').forEach(e => { e.style.transform = 'scale(' + (1 + 0.03 * g).toFixed(3) + ')'; });
+  q('.mpec').forEach(e => { e.style.transform = 'scale(' + (1 + 0.06 * g).toFixed(3) + ',' + (1 + 0.05 * g).toFixed(3) + ')'; });
+  q('.mleg').forEach(e => { e.style.transform = 'scale(' + (1 + 0.05 * g).toFixed(3) + ',1)'; });
+  q('.mdef').forEach(e => { e.setAttribute('stroke-width', 4 + g * 0.7); e.setAttribute('opacity', Math.min(1, 0.75 + 0.05 * g)); });
+  ['armL','armR'].forEach(id => $(id).setAttribute('stroke-width', 22 + g * 4.5));
+  ['hlL','hlR'].forEach(id => $(id).setAttribute('stroke-width', 8 + g * 1.6));
+  ['handL','handR'].forEach(id => $(id).setAttribute('r', 11 + g * 0.9));
+}
+
+
+function ik(Sx, Sy, Tx, Ty, a, b) {
+  const dx = Tx - Sx, dy = Ty - Sy;
+  const dist = Math.max(8, Math.min(Math.hypot(dx, dy), a + b - 1));
+  const base = Math.atan2(dy, dx);
+  const ang = Math.acos(Math.max(-1, Math.min(1, (a * a + dist * dist - b * b) / (2 * a * dist))));
+  return { ex: Sx + a * Math.cos(base + ang), ey: Sy + a * Math.sin(base + ang), hx: Sx + dist * Math.cos(base), hy: Sy + dist * Math.sin(base) };
+}
+
+function person(x, dir, i, carry, t, pc, hyWorld, reach) {
+  const h = HELPERS[i], K = 1.25;
+  const moving = t < .4 || t > .6;
+  const ph = t * 42, sw = moving ? Math.sin(ph) : 0, bob = moving ? -Math.abs(Math.cos(ph)) * 2 : 0;
+  const sk = 'url(#hs' + i + ')', sh = 'url(#hsh' + i + ')';
+  const T = reach ? { x: 24, y: (hyWorld - 342) / K } : { x: 20, y: -100 };
+  let s = '<g transform="translate(' + x.toFixed(1) + ' ' + (342 + bob).toFixed(1) + ') scale(' + (dir * K) + ' ' + K + ')">';
+  s += '<ellipse cx="0" cy="2" rx="24" ry="4" fill="#000" opacity=".35"/>';
+  // legs
+  [[-1, shade(h.skin, .7)], [1, h.skin]].forEach(([side, col]) => {
+    const a1 = sw * side * 0.5, hipx = -2, hipy = -74;
+    const kx = hipx + 38 * Math.sin(a1), ky = hipy + 38 * Math.cos(a1);
+    const b1 = a1 - (a1 > 0 ? a1 * 0.9 : a1 * 0.2);
+    const ax = kx + 38 * Math.sin(b1), ay = ky + 38 * Math.cos(b1);
+    s += '<path d="M' + hipx + ' ' + hipy + ' L' + kx.toFixed(1) + ' ' + ky.toFixed(1) + ' L' + ax.toFixed(1) + ' ' + ay.toFixed(1) + '" fill="none" stroke="' + col + '" stroke-width="11" stroke-linecap="round" stroke-linejoin="round"/>';
+    s += '<path d="M' + hipx + ' ' + hipy + ' L' + (hipx + (kx - hipx) * .62).toFixed(1) + ' ' + (hipy + (ky - hipy) * .62).toFixed(1) + '" fill="none" stroke="' + h.shorts + '" stroke-width="17" stroke-linecap="round"/>';
+    s += '<ellipse cx="' + (ax + 5).toFixed(1) + '" cy="' + (ay + 2).toFixed(1) + '" rx="10" ry="4.5" fill="#f2f2f2" stroke="#111" stroke-width="1.5"/><rect x="' + (ax - 5).toFixed(1) + '" y="' + (ay + 4.5).toFixed(1) + '" width="20" height="2.5" fill="#111"/>';
+  });
+  // far arm
+  const far = ik(-3, -136, T.x - 5, T.y + 2, 40, 40);
+  s += '<path d="M-3 -136 L' + far.ex.toFixed(1) + ' ' + far.ey.toFixed(1) + ' L' + far.hx.toFixed(1) + ' ' + far.hy.toFixed(1) + '" fill="none" stroke="' + shade(h.skin, .7) + '" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>';
+  // torso
+  s += '<path d="M-14 -138 Q2 -148 17 -138 L14 -78 L-12 -78 Z" fill="' + sh + '"/>';
+  s += '<path d="M-12 -118 Q2 -112 14 -118" fill="none" stroke="#000" stroke-opacity=".18" stroke-width="2"/>';
+  s += '<rect x="-13" y="-82" width="28" height="12" rx="3" fill="' + h.shorts + '"/><rect x="-13" y="-82" width="28" height="3" fill="#fff" opacity=".35"/>';
+  // neck + head
+  s += '<rect x="-4" y="-152" width="9" height="12" fill="' + shade(h.skin, .75) + '"/>';
+  s += '<ellipse cx="2" cy="-163" rx="11" ry="13.5" fill="' + sk + '"/><circle cx="-8" cy="-162" r="3" fill="' + h.skin + '"/>';
+  s += '<path d="M-10 -165 Q-9 -180 3 -178 Q14 -177 13 -165 Q8 -171 -2 -170 Q-8 -170 -10 -165Z" fill="' + h.hair + '"/>';
+  s += '<path d="M5 -167 L11 -166" stroke="#150c08" stroke-width="2" stroke-linecap="round"/><circle cx="8" cy="-163" r="1.6" fill="#150c08"/>';
+  s += '<path d="M12 -161 L14 -158 L11 -158" fill="none" stroke="' + shade(h.skin, .6) + '" stroke-width="1.3"/><path d="M5 -154 L10 -154" stroke="#3a1a10" stroke-width="1.5" stroke-linecap="round"/>';
+  // near arm
+  const near = ik(5, -136, T.x, T.y, 40, 40);
+  s += '<path d="M5 -136 L' + near.ex.toFixed(1) + ' ' + near.ey.toFixed(1) + ' L' + near.hx.toFixed(1) + ' ' + near.hy.toFixed(1) + '" fill="none" stroke="' + sk + '" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>';
+  s += '<path d="M5 -136 L' + (5 + (near.ex - 5) * .45).toFixed(1) + ' ' + (-136 + (near.ey + 136) * .45).toFixed(1) + '" fill="none" stroke="' + sh + '" stroke-width="14" stroke-linecap="round"/>';
+  s += '<circle cx="' + near.hx.toFixed(1) + '" cy="' + near.hy.toFixed(1) + '" r="5.5" fill="' + h.skin + '"/>';
+  if (carry) {
+    const ph2 = pc === 10 ? 44 : 60;
+    s += '<rect x="' + (near.hx - 4).toFixed(1) + '" y="' + (near.hy - ph2 / 2).toFixed(1) + '" width="8" height="' + ph2 + '" rx="2.5" fill="url(#pl' + pc + ')" stroke="#0b0b0c" stroke-width="1.2"/>';
+    s += '<circle cx="' + near.hx.toFixed(1) + '" cy="' + near.hy.toFixed(1) + '" r="5.5" fill="' + h.skin + '"/>';
+  }
+  return s + '</g>';
+}
+
+function drawHelpers(t) {
+  const L = LIFTS[lift];
+  const tx = { L: Math.max(20, 100 - PW * loadN - 26), R: Math.min(280, 200 + PW * loadN + 26) };
+  const prog = t < .4 ? t / .4 : (t < .6 ? 1 : 1 - (t - .6) / .4);
+  const reach = t >= .4 && t <= .6;
+  const hy = reach ? Math.max(120, Math.min(300, cur)) : 268;
+  let s = '';
+  [['L', -1], ['R', 1]].forEach(([k, sg], i) => {
+    const edge = sg < 0 ? -40 : 340;
+    s += person(edge + (tx[k] - edge) * prog, -sg, i, t < .5, t, pendingPlate, hy, reach);
+  });
+  $('helpG').innerHTML = s;
+}
+
+function startRack() {
+  state = 'rack'; rackT = 0; target = LIFTS[lift].high; newPR();
+  $('hint').textContent = 'Re-racking...';
+}
+
+function startLoad() {
+  const save = plates.slice();
+  addPlates();
+  pendingAfter = plates.slice();
+  plates = save;
+  const rest = save.slice();
+  pendingPlate = pendingAfter[0];
+  pendingAfter.forEach(v => { const i = rest.indexOf(v); if (i < 0) pendingPlate = v; else rest.splice(i, 1); });
+  loadN = Math.min(MAXP, save.length + 1);
+  loadT = 0; placed = false; state = 'load';
+  target = LIFTS[lift].low;
+  $('hint').textContent = 'Spotters adding plates...';
+}
+
+function newPR() {
+  growMuscles();
+  savePR();
+  $('bannerSub').textContent = 'LEVEL ' + (Math.floor(reps / 20) + 1) + '  ' + weightNow() + ' LB  x ' + reps;
+  $('fname').textContent = FIGHTERS[fi].name + '  LV ' + (Math.floor(reps / 20) + 1);
+  const b = $('banner');
+  b.classList.remove('show'); void b.offsetWidth; b.classList.add('show');
+  if (navigator.vibrate) navigator.vibrate([80, 40, 80, 40, 200]);
+}
+
+function rep() {
+  if (state !== 'play') return;
+  running = true;
+  reps++;
+  $('reps').textContent = reps;
+  lastTap = performance.now(); grip = 100;
+  const L = LIFTS[lift];
+  target = L.high;
+  setTimeout(() => { if (state === 'play') target = L.low; }, 190);
+  const m = document.querySelector('#bodyG .mouth');
+  if (m) { m.setAttribute('height', 11); setTimeout(() => m.setAttribute('height', 5), 200); }
+  const st = $('stage');
+  st.classList.remove('shake', 'crack'); void st.offsetWidth; st.classList.add('shake');
+  if (navigator.vibrate) navigator.vibrate(15);
+  const left = nextPlateAt - reps;
+  $('hint').textContent = 'Plates in ' + left + ' reps. Keep tapping!';
+
+  if (reps % 100 === 0) { nextPlateAt = reps + plateGap(reps); startLoad(); }
+  else if (reps === nextPlateAt) {
+    nextPlateAt = reps + plateGap(reps);
+    addPlates();
+    buildBar(plates.indexOf(Math.min.apply(null, plates)) + 1);
+    if (reps % 20 === 0) startRack();
+    else cue(CUES[Math.floor(Math.random() * CUES.length)]);
+  }
+  else if (reps % 20 === 0) startRack();
+}
+
+function renderFighters() {
+  $('fighters').innerHTML = FIGHTERS.map((f, i) =>
+    '<button class="fighter' + (i === fi ? ' sel' : '') + '" data-i="' + i + '"><svg viewBox="46 22 208 150">' + standing(f, i, true) + '</svg>' + f.name + '</button>').join('');
+  document.querySelectorAll('.fighter').forEach(b => b.addEventListener('click', () => {
+    fi = +b.dataset.i;
+    try { localStorage.setItem('tapkombat-fighter', fi); } catch (e) {}
+    renderFighters();
+  }));
+}
+
+function renderPicks() {
+  $('picks').innerHTML = Object.keys(LIFTS).map(k => '<button class="pick" data-lift="' + k + '">' + LIFTS[k].name + '<small id="pr_' + k + '"></small></button>').join('');
+  document.querySelectorAll('.pick').forEach(b => b.addEventListener('click', () => startLift(b.dataset.lift)));
+}
+
+function updateMenu() {
+  Object.keys(LIFTS).forEach(k => { $('pr_' + k).textContent = best[k] ? 'Best PR: ' + best[k] + ' lb' : 'Best PR: none yet'; });
+}
+
+$('finish').addEventListener('click', e => {
+  e.stopPropagation();
+  if (state !== 'play') return;
+  state = 'end'; running = false;
+  $('endTitle').textContent = 'FLAWLESS VICTORY';
+  $('endText').textContent = FIGHTERS[fi].name + ' did ' + reps + ' reps of ' + LIFTS[lift].name.toLowerCase() + ' with ' + weightNow() + ' lb on the bar.' + (best[lift] ? ' Best PR: ' + best[lift] + ' lb.' : '');
+  updateMenu();
+  show('endScreen');
+});
+$('again').addEventListener('click', () => startLift(lift));
+$('other').addEventListener('click', () => { state = 'menu'; updateMenu(); show('menu'); });
+$('play').addEventListener('pointerdown', e => { if (e.target.id !== 'finish') rep(); });
+window.addEventListener('keydown', e => { if (e.code === 'Space') { e.preventDefault(); rep(); } });
+buildDefs();
+renderFighters();
+renderPicks();
+updateMenu();
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
