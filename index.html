@@ -1,0 +1,2514 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#050404">
+<title>Iron Tap</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@300;500;700&family=Inter:wght@500;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #050404;
+    --panel: #110f0d;
+    --chalk: #efe9de;
+    --muted: #8a8277;
+    --ember: #ff8a3d;
+    --blood: #e0402a;
+    --steel: #9fb6d6;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    margin: 0; height: 100%; overflow: hidden;
+    background: var(--bg); color: var(--chalk);
+    font-family: Inter, system-ui, sans-serif;
+    touch-action: manipulation; user-select: none; -webkit-user-select: none;
+  }
+  #app { position: fixed; inset: 0; display: flex; flex-direction: column;
+    padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom); }
+
+  #hud { padding: 12px 16px 8px; display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; align-items: end;
+    background: var(--bg); position: relative; z-index: 2; border-bottom: 1px solid #1a1714; }
+  #liftName { font-family: Oswald, sans-serif; font-weight: 500; font-size: 15px; letter-spacing: 3px; text-transform: uppercase; color: var(--muted); }
+  #liftName span { color: var(--chalk); }
+  #weight { font-family: Oswald, sans-serif; font-weight: 700; font-size: 40px; line-height: 1; text-align: right; color: var(--chalk); }
+  #weight small { font-size: 14px; color: var(--muted); margin-left: 3px; font-weight: 500; letter-spacing: 2px; }
+  #reps { font-family: Oswald, sans-serif; font-size: 13px; letter-spacing: 2px; color: var(--muted); }
+  #reps b { color: var(--ember); font-size: 26px; font-weight: 700; letter-spacing: 0; margin-left: 4px; }
+  #nextUp { font-size: 11.5px; color: var(--muted); text-align: right; font-weight: 700; letter-spacing: .4px; }
+  #nextUp b { color: var(--chalk); }
+  .meter { grid-column: 1 / -1; height: 3px; background: #1d1a17; overflow: hidden; }
+  .meter > div { height: 100%; width: 0; }
+  #prMeter > div { background: var(--ember); transition: width .12s; box-shadow: 0 0 8px var(--ember); }
+  #stressMeter > div { background: var(--blood); box-shadow: 0 0 8px var(--blood); }
+  .meterLabel { grid-column: 1 / -1; display: flex; justify-content: space-between; font-size: 10px; color: var(--muted); font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase; margin-top: 7px; margin-bottom: 3px; }
+
+  #stage { position: relative; flex: 1; min-height: 0; }
+  canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+
+  #tapHint { text-align: center; padding: 10px 16px 16px; font-family: Oswald, sans-serif; font-weight: 500; font-size: 17px; letter-spacing: 6px; color: var(--muted); background: var(--bg); }
+  #tapHint.pulse { animation: pulse 1.4s ease-in-out infinite; }
+  #tapHint.warn { color: var(--blood); animation: shakeTxt .12s linear infinite; }
+  @keyframes pulse { 50% { color: var(--chalk); } }
+  @keyframes shakeTxt { 50% { transform: translateX(3px); } }
+
+  #banner { position: absolute; left: 0; right: 0; top: 12%; text-align: center; pointer-events: none;
+    font-family: Oswald, sans-serif; font-weight: 700; font-size: clamp(26px, 9vw, 44px); letter-spacing: 3px; color: var(--chalk); padding: 0 12px;
+    text-shadow: 0 0 30px rgba(255,138,61,.7), 0 2px 0 #000;
+    opacity: 0; transform: translateY(8px); transition: opacity .25s, transform .25s; z-index: 3; }
+  #banner.show { opacity: 1; transform: none; }
+  #banner.pr { color: var(--ember); font-size: clamp(28px, 10vw, 54px); }
+  #banner small { display: block; font-family: Inter, sans-serif; font-weight: 700; font-size: 12px; color: var(--muted); letter-spacing: 3px; text-transform: uppercase; margin-top: 4px; text-shadow: none; }
+
+  .overlay { position: fixed; inset: 0; background: radial-gradient(ellipse at 50% 0%, #2a1a10 0%, #050404 60%); display: none; overflow-y: auto;
+    flex-direction: column; align-items: center; justify-content: center; padding: 24px 16px; text-align: center; z-index: 10; }
+  .overlay.show { display: flex; }
+  h1 { font-family: Oswald, sans-serif; font-weight: 700; font-size: clamp(54px, 17vw, 88px); line-height: .9; margin: 0; letter-spacing: 6px; }
+  h1 span { color: var(--ember); text-shadow: 0 0 30px rgba(255,138,61,.5); }
+  .sub { color: var(--muted); font-size: 13.5px; margin: 12px 0 20px; max-width: 360px; line-height: 1.5; }
+  .chars { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; width: 100%; max-width: 420px; }
+  button { font: inherit; cursor: pointer; border: 0; }
+  .charBtn { background: var(--panel); color: var(--chalk); border: 1px solid #241f1b; border-radius: 4px; padding: 0 0 10px; overflow: hidden; }
+  .charBtn.sel { border-color: var(--ember); box-shadow: 0 0 0 1px var(--ember), 0 0 24px rgba(255,138,61,.25); }
+  .charBtn canvas { position: static; width: 100%; height: auto; aspect-ratio: 1 / 1.2; }
+  .charBtn .n { font-family: Oswald, sans-serif; font-weight: 700; font-size: 18px; letter-spacing: 3px; margin-top: 6px; }
+  .charBtn .d { font-size: 10px; color: var(--muted); font-weight: 700; letter-spacing: 1px; text-transform: uppercase; }
+  .pickLbl { width: 100%; max-width: 420px; text-align: left; font-size: 10px; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); margin: 14px 0 6px; }
+  .workouts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; width: 100%; max-width: 420px; }
+  .wBtn { background: var(--panel); color: var(--chalk); border: 1px solid #241f1b; border-radius: 4px; padding: 10px 4px; font-family: Oswald, sans-serif; font-weight: 500; font-size: 13px; letter-spacing: 1.5px; text-transform: uppercase; }
+  .wBtn small { display: block; font-family: Inter, sans-serif; font-size: 10px; color: var(--muted); letter-spacing: .5px; font-weight: 700; margin-top: 2px; }
+  .wBtn.sel { border-color: var(--ember); color: var(--ember); box-shadow: 0 0 0 1px var(--ember); }
+  .startBtn { margin-top: 16px; width: 100%; max-width: 420px; background: var(--ember); color: #120a05; font-family: Oswald, sans-serif; font-weight: 700; font-size: 22px; letter-spacing: 5px; padding: 14px; border-radius: 4px; }
+  .startBtn:active { transform: scale(.98); }
+  .best { margin-top: 12px; font-size: 12px; font-weight: 800; color: var(--ember); letter-spacing: 1px; }
+  .rules { margin-top: 12px; font-size: 12px; color: var(--muted); line-height: 1.6; max-width: 380px; }
+  .rules b { color: var(--chalk); }
+
+  #endTitle { font-family: Oswald, sans-serif; font-weight: 700; font-size: clamp(50px, 16vw, 88px); line-height: .95; letter-spacing: 4px; color: var(--blood); text-shadow: 0 0 40px rgba(224,64,42,.5); }
+  #endStats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 20px 0; width: 100%; max-width: 340px; }
+  .stat { background: var(--panel); border: 1px solid #221d19; border-radius: 4px; padding: 12px 10px; }
+  .stat b { display: block; font-family: Oswald, sans-serif; font-weight: 700; font-size: 28px; color: var(--chalk); }
+  .stat span { font-size: 10px; font-weight: 800; color: var(--muted); text-transform: uppercase; letter-spacing: 1.5px; }
+  #endNote { color: var(--ember); font-size: 13px; font-weight: 800; margin-bottom: 20px; min-height: 1em; letter-spacing: 1px; }
+  .btnRow { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+  .btn { background: var(--chalk); color: #111; padding: 14px 22px; border-radius: 4px; font-weight: 800; font-size: 15px; letter-spacing: 1px; }
+  .btn.ghost { background: transparent; color: var(--chalk); border: 1px solid #3a332d; }
+  .btn:active { transform: scale(.97); }
+  .modes { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; width: 100%; max-width: 420px; margin-bottom: 4px; }
+  .modeBtn { background: var(--panel); color: var(--muted); border: 1px solid #241f1b; border-radius: 4px; padding: 12px 4px; font-family: Oswald, sans-serif; font-weight: 700; font-size: 17px; letter-spacing: 3px; }
+  .modeBtn.sel { color: #120a05; background: var(--chalk); border-color: var(--chalk); }
+  #runApp { position: fixed; inset: 0; display: none; z-index: 5; background: #000; touch-action: none; }
+  #runApp.show { display: block; }
+  #rc { position: absolute; inset: 0; width: 100%; height: 100%; }
+  #runHud { position: absolute; left: 0; right: 0; top: env(safe-area-inset-top); display: flex; justify-content: space-between; padding: 12px 16px; pointer-events: none; font-family: Oswald, sans-serif; text-shadow: 0 2px 6px rgba(0,0,0,.8); }
+  #runHud .lbl { display: block; font-size: 11px; letter-spacing: 3px; color: #d8cfc2; font-weight: 500; }
+  #runHud b { font-size: 34px; line-height: 1; font-weight: 700; }
+  #runShakes { color: #7fd6ff; }
+  #runGains { color: #ffc531; }
+  #runMuscle { color: #ff8a3d; }
+  @media (max-width: 420px) { #runHud b { font-size: 26px; } #runHud .lbl { font-size: 9px; letter-spacing: 2px; } }
+  #runHint { position: absolute; left: 16px; right: 16px; bottom: calc(24px + env(safe-area-inset-bottom)); text-align: center; pointer-events: none; font-family: Oswald, sans-serif; font-size: 15px; letter-spacing: 2px; color: #fff; text-shadow: 0 2px 6px #000; transition: opacity .6s; }
+  #muteBtn { position: fixed; left: 10px; bottom: calc(10px + env(safe-area-inset-bottom)); z-index: 12; background: rgba(20,18,16,.75); color: #efe9de; border: 1px solid #3a332d; border-radius: 4px; padding: 6px 10px; font-family: Oswald, sans-serif; font-size: 13px; letter-spacing: 2px; }
+  #muteBtn.off { color: #8a8277; }
+  body:has(.overlay.show) #muteBtn { top: calc(10px + env(safe-area-inset-top)); bottom: auto; left: auto; right: 10px; }
+  #pauseScreen { position: fixed; inset: 0; z-index: 9; display: none; flex-direction: column; align-items: center; justify-content: center; background: rgba(5,4,4,.72); text-align: center; }
+  #pauseScreen.show { display: flex; }
+  #pauseScreen .pz { font-family: Oswald, sans-serif; font-weight: 700; font-size: 64px; letter-spacing: 8px; }
+  #pauseScreen .pzs { color: #a39b8e; font-size: 13px; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; margin-top: 6px; }
+  .keys { display: none; }
+  .desk .keys { display: inline; }
+  .desk .touch { display: none; }
+  @media (hover: hover) and (pointer: fine) { button:hover { filter: brightness(1.12); } .charBtn, .wBtn, .modeBtn { cursor: pointer; } }
+  #confetti { position: fixed; inset: 0; pointer-events: none; z-index: 11; width: 100%; height: 100%; }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="hud">
+    <div id="liftName">LVL 1 · <span>Bench Press</span></div>
+    <div id="weight">135<small>LB</small></div>
+    <div id="reps">REPS<b id="repCount">0</b></div>
+    <div id="nextUp"><span id="plateLbl">Plates in</span> <b id="plateIn">5</b> · PR in <b id="prIn">20</b></div>
+    <div class="meterLabel"><span>Next PR</span><span id="prCountLbl">PRs 0</span></div>
+    <div class="meter" id="prMeter"><div></div></div>
+    <div class="meterLabel"><span>Spotter</span><span id="stressLbl">Tap within 1.3s</span></div>
+    <div class="meter" id="stressMeter"><div></div></div>
+  </div>
+  <div id="stage">
+    <canvas id="c"></canvas>
+    <div id="banner"></div>
+  </div>
+  <div id="tapHint" class="pulse">TAP TO LIFT</div>
+</div>
+
+<div class="overlay show" id="startScreen">
+  <h1>IRON <span>TAP</span></h1>
+  <p class="sub" id="subTxt">Every tap is a rep. Every 5 reps you rack it, get up and load more plates. Stop tapping and your spotter re-racks it. A new PR every 20, and your lifter grows with each one.</p>
+  <div class="modes" id="modes">
+    <button class="modeBtn sel" data-mode="lift">LIFT</button>
+    <button class="modeBtn" data-mode="run">GYM RUN</button>
+  </div>
+  <div class="pickLbl">Choose your lifter</div>
+  <div class="chars" id="chars"></div>
+  <div id="workoutWrap">
+    <div class="pickLbl">Choose your workout</div>
+    <div class="workouts" id="workouts"></div>
+  </div>
+  <button class="startBtn" id="startBtn">START LIFTING</button>
+  <div class="best" id="bestLbl"></div>
+  <div class="rules" id="rulesTxt">
+    Max out the sleeves, re-rack, and move up a level on the same lift.<br>
+    The longer you go, the less time you get between taps. <b>Stop tapping and your spotter runs in and re-racks the bar</b>. Set over, start again.
+  </div>
+</div>
+
+<div class="overlay" id="endScreen">
+  <div id="endTitle">SET OVER</div>
+  <div id="endStats"></div>
+  <div id="endNote"></div>
+  <div class="btnRow">
+    <button class="btn" id="againBtn">Restart</button>
+    <button class="btn ghost" id="menuBtn">Main menu</button>
+  </div>
+</div>
+<div id="runApp">
+  <canvas id="rc"></canvas>
+  <div id="runHud">
+    <div><span class="lbl">SCORE</span><b id="runScore">0</b></div>
+    <div style="text-align:center"><span class="lbl">BAR (LB)</span><b id="runGains">45</b></div>
+    <div style="text-align:center"><span class="lbl">MUSCLE</span><b id="runMuscle">100</b></div>
+    <div style="text-align:right"><span class="lbl">SHAKES</span><b id="runShakes">0</b></div>
+  </div>
+  <div id="runHint"><span class="touch">SWIPE ← → TO SWITCH LANES · ↑ JUMP · ↓ SLIDE</span><span class="keys">← → OR A D: LANES · ↑ W OR SPACE: JUMP · ↓ S: SLIDE · P: PAUSE</span></div>
+</div>
+<canvas id="confetti"></canvas>
+<button id="muteBtn" aria-label="Toggle sound">♪ ON</button>
+<div id="pauseScreen"><div class="pz">PAUSED</div><div class="pzs" id="pauseHint">Press P or tap to resume</div></div>
+
+<script>
+(() => {
+  // =========================================================
+  // CONFIG
+  // =========================================================
+  const BAR_LB = 45, PLATE_LB = 45, MAX_PLATES = 6;
+  const COMP_LEVEL = 10;                                   // after 10 levels: competition
+  // a new bar every level (all 45 lb, so the plate math stays the same)
+  const BARS = [
+    { name: 'Standard Olympic Bar', shaft: '#8e9296', hi: '#f4f5f6', sleeve: '#b9bdc1', sHi: '#ffffff', flange: '#7d8185', collar: '#5a5e62', cap: '#d0d3d6' },
+    { name: 'Black Oxide Power Bar', shaft: '#2b2c2f', hi: '#8c9096', sleeve: '#c4c8cc', sHi: '#ffffff', flange: '#1d1e20', collar: '#3a3d40', cap: '#d0d3d6' },
+    { name: 'Stainless Deadlift Bar', shaft: '#a9b3bd', hi: '#ffffff', sleeve: '#c9d1d8', sHi: '#ffffff', flange: '#8c959d', collar: '#5a5e62', cap: '#e4e8ec' },
+    { name: 'Cerakote Stealth Bar', shaft: '#1a1a1b', hi: '#555a60', sleeve: '#232325', sHi: '#6a6e74', flange: '#c0392b', collar: '#c0392b', cap: '#2e2f31' },
+    { name: 'Bronze Beast Bar', shaft: '#8a5a2b', hi: '#f0c48a', sleeve: '#a8723c', sHi: '#ffd9a6', flange: '#6a4421', collar: '#5a3a1c', cap: '#c08a50' },
+    { name: 'Crimson Cerakote Bar', shaft: '#9e1f1a', hi: '#ff8a7a', sleeve: '#c4c8cc', sHi: '#ffffff', flange: '#6e1410', collar: '#1d1d1d', cap: '#d0d3d6' },
+    { name: 'Ocean Blue Bar', shaft: '#1f5aa8', hi: '#9fd0ff', sleeve: '#c4c8cc', sHi: '#ffffff', flange: '#173f78', collar: '#1d1d1d', cap: '#d0d3d6' },
+    { name: 'Rainbow Titanium Bar', rainbow: true, shaft: '#6a4bb8', hi: '#ffffff', sleeve: '#c4c8cc', sHi: '#ffffff', flange: '#3a2a7a', collar: '#2a2a2a', cap: '#d0d3d6' },
+    { name: 'Diamond Ice Bar', shaft: '#d8f0ff', hi: '#ffffff', sleeve: '#e8f6ff', sHi: '#ffffff', flange: '#9fd6ff', collar: '#7fb8e0', cap: '#ffffff', sparkle: true },
+    { name: 'Solid Gold Bar', shaft: '#c9971d', hi: '#fff1b0', sleeve: '#e0b23a', sHi: '#fff6cc', flange: '#a07410', collar: '#7a5a0c', cap: '#ffe08a', sparkle: true },
+    { name: 'Championship Comp Bar', shaft: '#9aa0a6', hi: '#ffffff', sleeve: '#d6dade', sHi: '#ffffff', flange: '#1e4fa8', collar: '#c9971d', cap: '#e4e8ec', comp: true },
+  ];
+  const isComp = () => G && G.level >= COMP_LEVEL;
+  const barFor = lvl => BARS[Math.min(lvl, BARS.length - 1)];
+  const curBar = () => (mode === 'lift' && G) ? barFor(G.level) : BARS[0];
+  // early levels are short so you can reach the competition: level 1 tops out at 1 plate a side, level 6+ at 6
+  const maxPlates = () => Math.min(MAX_PLATES, (G ? G.level : 0) + 1);
+  const COMP_PLATES = ['#c62828', '#1e4fa8', '#e0b31e', '#2e8b3e'];
+  const REPS_PER_LOAD = 5, PR_EVERY = 20;
+  // Harder every rep: less time allowed between taps, and the bar bends faster once you stop.
+  const graceFor = r => Math.max(0.38, 1.3 - r * 0.009);
+  const bendTimeFor = r => Math.max(0.55, 1.4 - r * 0.007);
+  const UP = 0.1, DOWN = 0.2;                // rep animation (seconds)
+
+  // Real Olympic bar proportions (inches)
+  const BAR = { half: 43.3, collar: 25.75, shaftR: 0.56, sleeveR: 1.0 };
+  const PLATE = { R: 8.86, T: 2.0 };
+
+  const EXERCISES = [
+    { id: 'bench', name: 'Bench Press',    start: 0, restP: 1, hooks: true },
+    { id: 'squat', name: 'Squat',          start: 0, restP: 1, hooks: true },
+    { id: 'dead',  name: 'Deadlift',       start: 0, restP: 0, hooks: false },
+    { id: 'ohp',   name: 'Overhead Press', start: 0, restP: 0, hooks: true },
+    { id: 'curl',  name: 'Barbell Curl',   start: 0, restP: 0, hooks: false },
+  ];
+
+  const CHARS = [
+    { id: 'rex',   name: 'REX',   tag: 'Powerlifter', skin: '#d9a37c', hair: 'flattop', hairCol: '#b98a45', shorts: '#8e1e19', trim: '#e8e2d6', m0: 1.0 },
+    { id: 'kofi',  name: 'KOFI',  tag: 'Mass monster', skin: '#6b3f27', hair: 'hightop', hairCol: '#16110e', beard: true, shorts: '#1b1b1d', trim: '#c9a24a', m0: 1.15 },
+    { id: 'dante', name: 'DANTE', tag: 'Old school',   skin: '#c08a5e', hair: 'slick',  hairCol: '#23180f', stache: true, shorts: '#1f2c55', trim: '#e8e2d6', m0: 1.05 },
+  ];
+  const SPOTTERS = [
+    { skin: '#b07f5c', hair: 'short', hairCol: '#2a1c12', shirt: '#3d4651', shorts: '#232325', trim: '#232325' },
+  ];
+
+  // =========================================================
+  // UTIL
+  // =========================================================
+  const $ = id => document.getElementById(id);
+  const lerp = (a, b, t) => a + (b - a) * t;
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  const ease = t => t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+  const load = k => { try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } };
+  const save = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} };
+  function shade(hex, amt) {
+    const n = parseInt(hex.slice(1), 16);
+    let r = n >> 16, g = (n >> 8) & 255, b = n & 255;
+    const f = amt < 0 ? 0 : 255, t = Math.abs(amt);
+    r = Math.round(lerp(r, f, t)); g = Math.round(lerp(g, f, t)); b = Math.round(lerp(b, f, t));
+    return `rgb(${r},${g},${b})`;
+  }
+
+  // =========================================================
+  // CANVAS + COORDS (scene is built in real inches)
+  // =========================================================
+  const canvas = $('c'); let ctx = canvas.getContext('2d');
+  const stage = $('stage'), banner = $('banner');
+  let W = 0, H = 0, DPR = 1, u = 4, floorY = 0, cxS = 0;
+  const X = x => cxS + x * u;
+  const Y = y => floorY - y * u;
+  const bgCanvas = document.createElement('canvas');
+  const figC = document.createElement('canvas'), rimC = document.createElement('canvas');
+
+  function resize() {
+    DPR = Math.min(window.devicePixelRatio || 1, 2);
+    const r = stage.getBoundingClientRect();
+    W = r.width; H = r.height;
+    canvas.width = W * DPR; canvas.height = H * DPR;
+    floorY = H - Math.max(16, H * 0.06);
+    u = Math.min(W * 0.98 / 88, (floorY - 6) / 96);
+    cxS = W / 2;
+    const cf = $('confetti');
+    cf.width = innerWidth * DPR; cf.height = innerHeight * DPR;
+    renderBackground();
+  }
+  addEventListener('resize', resize);
+
+  // =========================================================
+  // AUDIO / HAPTICS
+  // =========================================================
+  let ac;
+  function audio() { if (!ac) { try { ac = new (window.AudioContext || window.webkitAudioContext)(); } catch {} } if (ac && ac.state === 'suspended') ac.resume(); return ac; }
+  function tone(freq, dur, type = 'square', vol = 0.06, slide = 0) {
+    const a = audio(); if (!a) return;
+    const o = a.createOscillator(), g = a.createGain();
+    o.type = type; o.frequency.value = freq;
+    if (slide) o.frequency.exponentialRampToValueAtTime(Math.max(20, freq * slide), a.currentTime + dur);
+    g.gain.setValueAtTime(vol, a.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.0001, a.currentTime + dur);
+    o.connect(g).connect(out()); o.start(); o.stop(a.currentTime + dur);
+  }
+  // ---------- synthesized sound effects + gym music (no audio files needed)
+  let master = null, musicBus = null, noiseBuf = null;
+  let muted = load('irontap_muted') === true;
+  function out() {
+    const a = audio(); if (!a) return null;
+    if (!master) {
+      master = a.createGain(); master.gain.value = muted ? 0 : .9;
+      const comp = a.createDynamicsCompressor(); comp.threshold.value = -14; comp.ratio.value = 4;
+      master.connect(comp).connect(a.destination);
+      musicBus = a.createGain(); musicBus.gain.value = .26; musicBus.connect(master);
+      noiseBuf = a.createBuffer(1, a.sampleRate, a.sampleRate);
+      const d = noiseBuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+    }
+    return master;
+  }
+  function env(g, t, at, peak, dec) { g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(peak, t + at); g.gain.exponentialRampToValueAtTime(.0001, t + at + dec); }
+  function osc(type, f, t, dur, vol, o2 = {}) {
+    const a = audio(), o = a.createOscillator(), g = a.createGain();
+    o.type = type; o.frequency.setValueAtTime(f, t); if (o2.det) o.detune.value = o2.det;
+    if (o2.slide) o.frequency.exponentialRampToValueAtTime(Math.max(20, f * o2.slide), t + dur);
+    env(g, t, .004, vol, dur); o.connect(g).connect(o2.dest || out()); o.start(t); o.stop(t + dur + .05);
+  }
+  function noise(t, dur, vol, o2 = {}) {
+    const a = audio(), src = a.createBufferSource(), fl = a.createBiquadFilter(), g = a.createGain();
+    src.buffer = noiseBuf; fl.type = o2.type || 'bandpass'; fl.frequency.setValueAtTime(o2.f || 1000, t); fl.Q.value = o2.q || 1;
+    if (o2.f2) fl.frequency.exponentialRampToValueAtTime(o2.f2, t + dur);
+    env(g, t, .005, vol, dur); src.connect(fl).connect(g).connect(o2.dest || out()); src.start(t, Math.random() * .5); src.stop(t + dur + .05);
+  }
+  const SFX = {
+    t() { const a = audio(); return a && out() ? a.currentTime : null; },
+    // metal plates/bar: a handful of inharmonic partials + a click
+    clank(heavy = false) {
+      const t = this.t(); if (t == null) return; const b = heavy ? .55 : 1;
+      [420, 1130, 1870, 2650, 3420].forEach((f, i) => osc('sine', f * b * (1 + Math.random() * .02), t, (heavy ? .55 : .3) / (1 + i * .4), (heavy ? .09 : .05) / (1 + i * .5)));
+      noise(t, .04, heavy ? .25 : .12, { f: 3000, q: .8 });
+      if (heavy) osc('sine', 90, t, .25, .25, { slide: .5 });
+    },
+    // "HUP!" — a sawtooth pushed through two vowel formants
+    grunt(p = 1) {
+      const t = this.t(); if (t == null) return; const a = audio();
+      const o = a.createOscillator(); o.type = 'sawtooth'; o.frequency.setValueAtTime(150 * p, t); o.frequency.exponentialRampToValueAtTime(95 * p, t + .2);
+      const g = a.createGain(); env(g, t, .02, .2, .2);
+      for (const [f, q] of [[650, 4], [1100, 6]]) { const fl = a.createBiquadFilter(); fl.type = 'bandpass'; fl.frequency.value = f; fl.Q.value = q; o.connect(fl).connect(g); }
+      g.connect(out()); o.start(t); o.stop(t + .3); noise(t, .12, .04, { f: 900 });
+    },
+    thud(v = .3) { const t = this.t(); if (t == null) return; osc('sine', 110, t, .18, v, { slide: .45 }); noise(t, .08, v * .4, { type: 'lowpass', f: 500 }); },
+    step() { this.thud(.1); },
+    whoosh(up = true) { const t = this.t(); if (t == null) return; noise(t, .28, .2, { f: up ? 500 : 2200, f2: up ? 2600 : 400, q: 1.5 }); },
+    bloop() { const t = this.t(); if (t == null) return; osc('sine', 420, t, .12, .12, { slide: 2.2 }); osc('sine', 700, t + .05, .1, .07, { slide: 1.8 }); },
+    clink() { const t = this.t(); if (t == null) return; osc('sine', 2400, t, .14, .06); osc('sine', 3150, t + .07, .14, .05); },
+    ding() { const t = this.t(); if (t == null) return; osc('sine', 1320, t, .5, .07); osc('sine', 1980, t, .35, .035); },
+    rack() { this.clank(true); const t = this.t(); if (t == null) return; osc('square', 70, t, .15, .07, { slide: .6 }); },
+    slidePlate() { const t = this.t(); if (t == null) return; noise(t, .25, .1, { f: 2500, f2: 5200, q: 6 }); setTimeout(() => this.clank(true), 220); },
+    airhorn() {
+      const t = this.t(); if (t == null) return;
+      for (const [d, len] of [[0, .32], [.4, .12], [.56, .7]]) { for (const det of [-14, 0, 10]) osc('sawtooth', 415, t + d, len, .05, { det }); osc('sawtooth', 523, t + d, len, .025); }
+    },
+    whistle() {
+      const t = this.t(); if (t == null) return; const a = audio();
+      for (const [d, len] of [[0, .25], [.32, .55]]) {
+        const o = a.createOscillator(), l = a.createOscillator(), lg = a.createGain(), g = a.createGain();
+        o.frequency.value = 2900; l.frequency.value = 32; lg.gain.value = 180; l.connect(lg).connect(o.frequency);
+        g.gain.setValueAtTime(.0001, t + d); g.gain.exponentialRampToValueAtTime(.11, t + d + .02);
+        g.gain.setValueAtTime(.11, t + d + len - .05); g.gain.exponentialRampToValueAtTime(.0001, t + d + len);
+        o.connect(g).connect(out()); o.start(t + d); l.start(t + d); o.stop(t + d + len + .05); l.stop(t + d + len + .05);
+        noise(t + d, len, .03, { f: 3000, q: 2 });
+      }
+    },
+    crash() {
+      const t = this.t(); if (t == null) return;
+      noise(t, .6, .5, { type: 'lowpass', f: 2200, f2: 200 }); osc('sine', 60, t, .5, .4, { slide: .5 });
+      this.clank(true); setTimeout(() => this.clank(false), 90); setTimeout(() => this.clank(true), 180);
+    },
+    // little mumble when someone talks
+    babble(who) {
+      const t = this.t(); if (t == null) return;
+      const base = who === 'chaser' ? 340 : who === 'spotter' ? 270 : 190, n = 4 + Math.random() * 3 | 0;
+      for (let i = 0; i < n; i++) osc('square', base * (.8 + Math.random() * .6), t + i * .065, .05, .03);
+    },
+    click() { const t = this.t(); if (t == null) return; osc('triangle', 900, t, .05, .05, { slide: .7 }); },
+    // crowd roar (filtered noise swell) + scattered claps
+    cheer(v = 1) {
+      const t = this.t(); if (t == null) return;
+      const a = audio(), dur = .9 + v * .9;
+      for (const [f, q, vol] of [[700, .7, .22], [1400, 1.2, .12], [350, .8, .14]]) {
+        const src = a.createBufferSource(), fl = a.createBiquadFilter(), g = a.createGain();
+        src.buffer = noiseBuf; src.loop = true; fl.type = 'bandpass'; fl.frequency.value = f; fl.Q.value = q;
+        g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(vol * v, t + .12); g.gain.exponentialRampToValueAtTime(.0001, t + dur);
+        src.connect(fl).connect(g).connect(out()); src.start(t, Math.random() * .5); src.stop(t + dur + .05);
+      }
+      const claps = Math.round(6 + v * 14);
+      for (let i = 0; i < claps; i++) noise(t + Math.random() * dur * .8, .03, .1 + Math.random() * .1, { type: 'highpass', f: 1200 + Math.random() * 800 });
+    },
+  };
+
+  // ---------- background gym beat
+  const MUSIC = { timer: null, next: 0, step: 0, bpm: 120 };
+  const BASS = [0, 0, 12, 0, 0, 0, 10, 0, 3, 3, 15, 3, 5, 5, 7, 10];
+  function musicStart(bpm) {
+    const a = audio(); if (!a || !out()) return;
+    MUSIC.bpm = bpm; if (MUSIC.timer) return;
+    MUSIC.step = 0; MUSIC.next = a.currentTime + .1;
+    MUSIC.timer = setInterval(musicTick, 25);
+  }
+  function musicStop() { clearInterval(MUSIC.timer); MUSIC.timer = null; }
+  function musicTick() {
+    const a = audio(); if (!a) return; const sixteenth = 60 / MUSIC.bpm / 4;
+    while (MUSIC.next < a.currentTime + .12) {
+      const t = MUSIC.next, st = MUSIC.step % 16, bar = (MUSIC.step / 16 | 0) % 4;
+      if (st % 4 === 0) osc('sine', 150, t, .22, .55, { slide: .3, dest: musicBus });
+      if (st === 4 || st === 12) noise(t, .16, .3, { type: 'highpass', f: 1400, dest: musicBus });
+      if (st % 2 === 0) noise(t, .03, .09, { type: 'highpass', f: 7000, dest: musicBus });
+      if (st % 2 === 0) {
+        const f = 55 * Math.pow(2, (BASS[st] + (bar === 3 ? -2 : 0)) / 12);
+        const o = a.createOscillator(), fl = a.createBiquadFilter(), g = a.createGain(), d = sixteenth * 1.8;
+        o.type = 'sawtooth'; o.frequency.value = f; fl.type = 'lowpass'; fl.Q.value = 6;
+        fl.frequency.setValueAtTime(1000, t); fl.frequency.exponentialRampToValueAtTime(200, t + d);
+        env(g, t, .005, .18, d); o.connect(fl).connect(g).connect(musicBus); o.start(t); o.stop(t + d + .05);
+      }
+      MUSIC.next += sixteenth; MUSIC.step++;
+    }
+  }
+  function setMuted(v) {
+    muted = v; save('irontap_muted', v);
+    if (master) master.gain.value = v ? 0 : .9;
+    if (silentEl) { if (v) silentEl.pause(); else silentEl.play().catch(() => {}); }
+    if (v) shush();
+    $('muteBtn').textContent = v ? '♪ OFF' : '♪ ON';
+    $('muteBtn').classList.toggle('off', v);
+  }
+  // ---------- make sound actually start on phones
+  // iPhone: the ring/silent switch mutes web-page sound unless the page is in "playback" mode,
+  // and audio can only be switched on from inside a real tap. Playing a silent looping <audio>
+  // element (plus audioSession = playback on newer iOS) puts the page in playback mode.
+  let silentEl = null;
+  function silentWav() {
+    const sr = 8000, n = sr / 2, buf = new ArrayBuffer(44 + n * 2), v = new DataView(buf);
+    const w = (o, str) => [...str].forEach((ch, i) => v.setUint8(o + i, ch.charCodeAt(0)));
+    w(0, 'RIFF'); v.setUint32(4, 36 + n * 2, true); w(8, 'WAVE'); w(12, 'fmt ');
+    v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true); v.setUint32(24, sr, true);
+    v.setUint32(28, sr * 2, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true); w(36, 'data'); v.setUint32(40, n * 2, true);
+    return URL.createObjectURL(new Blob([buf], { type: 'audio/wav' }));
+  }
+  function unlockAudio() {
+    try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch {}
+    const a = audio(); if (!a) return;
+    out();
+    if (a.state !== 'running') a.resume().catch(() => {});
+    try { const b = a.createBuffer(1, 1, 22050), src = a.createBufferSource(); src.buffer = b; src.connect(a.destination); src.start(0); } catch {}
+    if (!silentEl) {
+      silentEl = document.createElement('audio');
+      silentEl.src = silentWav(); silentEl.loop = true; silentEl.preload = 'auto';
+      silentEl.setAttribute('playsinline', ''); silentEl.setAttribute('x-webkit-airplay', 'deny');
+    }
+    if (silentEl.paused && !muted && !document.hidden) silentEl.play().catch(() => {});
+    if (false && !ttsPrimed && window.speechSynthesis) {
+      ttsPrimed = true;
+      try { const u = new SpeechSynthesisUtterance(' '); u.volume = 0; speechSynthesis.speak(u); } catch {}
+    }
+  }
+  let ttsPrimed = false;
+  ['touchstart', 'touchend', 'pointerdown', 'pointerup', 'mousedown', 'click', 'keydown']
+    .forEach(ev => document.addEventListener(ev, unlockAudio, { capture: true, passive: true }));
+  document.addEventListener('visibilitychange', () => { if (document.hidden) { if (silentEl) silentEl.pause(); shush(); } });
+
+  const clank = () => SFX.clank();
+  const buzz = ms => { try { navigator.vibrate && navigator.vibrate(ms); } catch {} };
+
+  // =========================================================
+  // GAME STATE
+  // =========================================================
+  let charIdx = 0, exIdx = 0, state = 'menu';
+  let G = null;
+
+  function newGame() {
+    const m0 = CHARS[charIdx].m0;
+    G = {
+      level: 0, ex: EXERCISES[exIdx], plates: EXERCISES[exIdx].start,
+      reps: 0, levelReps: 0, prs: 0, maxWeight: 0,
+      progress: 0, phase: 'push', t: 0, from: 0,
+      started: false, lastTap: 0, bend: 0, shake: 0,
+      m: m0, mTarget: m0, pops: [], snap: null, fade: 0,
+      load: null, creakAt: 0, spot: 0, cheer: 0, judges: 0, flashes: [],
+    };
+    G.maxWeight = weight();
+  }
+  const weight = () => BAR_LB + G.plates * 2 * PLATE_LB;
+  const now = () => performance.now() / 1000;
+
+  function startGame() {
+    audio();
+    newGame();
+    state = 'play';
+    $('startScreen').classList.remove('show');
+    $('endScreen').classList.remove('show');
+    setHint(T_LIFT, 'pulse');
+    updateHud();
+    showBanner(G.ex.name.toUpperCase(), `Level 1 · ${BARS[0].name}`);
+    renderBackground();
+    clearBubbles(); setTimeout(() => { if (state === 'play') say('lifter', pick(BRO.start)); }, 700);
+    musicStart(104);
+  }
+
+  let bannerTimer;
+  function showBanner(text, small, ms = 1300, cls = '') {
+    banner.innerHTML = text + (small ? `<small>${small}</small>` : '');
+    banner.className = 'show ' + cls;
+    clearTimeout(bannerTimer);
+    bannerTimer = setTimeout(() => banner.className = cls, ms);
+  }
+  function setHint(text, cls) {
+    const h = $('tapHint'); if (h.textContent !== text) h.textContent = text; h.className = cls || '';
+  }
+
+  function updateHud() {
+    $('liftName').innerHTML = isComp() ? `MEET · <span>${G.ex.name}</span>` : `LVL ${G.level + 1} · <span>${G.ex.name}</span>`;
+    $('weight').innerHTML = `${weight()}<small>LB</small>`;
+    $('repCount').textContent = G.reps;
+    $('plateIn').textContent = REPS_PER_LOAD - (G.levelReps % REPS_PER_LOAD);
+    $('plateLbl').textContent = G.plates >= maxPlates() ? 'Re-rack in' : 'Plates in';
+    $('prIn').textContent = PR_EVERY - (G.reps % PR_EVERY);
+    $('prMeter').firstElementChild.style.width = ((G.reps % PR_EVERY) / PR_EVERY * 100) + '%';
+    $('prCountLbl').textContent = `PRs ${G.prs}`;
+  }
+
+  // =========================================================
+  // INPUT — every tap is one full rep
+  // =========================================================
+  function tap() {
+    if (state !== 'play' || !G) return;
+    audio();
+    if (G.phase !== 'push' && G.phase !== 'rep') return;
+    G.started = true;
+    G.lastTap = now();
+    G.bend = Math.max(0, G.bend - 0.4);
+    G.shake = 2;
+    G.phase = 'rep'; G.t = 0; G.from = G.progress;
+    completeRep();
+  }
+  $('app').addEventListener('pointerdown', e => { e.preventDefault(); tap(); }, { passive: false });
+  addEventListener('keydown', e => { if ((e.code === 'Space' || e.code === 'Enter') && !e.repeat) { e.preventDefault(); if (state === 'play') tap(); } });
+
+  // =========================================================
+  // GAME FLOW
+  // =========================================================
+  function completeRep() {
+    G.reps++; G.levelReps++;
+    if (isComp()) {
+      G.judges = 1.1; G.cheer = Math.min(1, (G.cheer || 0) + .55); SFX.cheer(.55);
+      if (Math.random() < .22 && !bubbles.crowd) say('crowd', pick(BRO.crowd), 1600);
+    }
+    clank(); buzz(15);
+    if (G.reps % 2 === 0) SFX.grunt(.9 + Math.random() * .3);
+    G.pops.push({ text: '+1', y: 0, life: 1 });
+
+    let isPR = false;
+    if (G.reps % PR_EVERY === 0) {
+      isPR = true; G.prs++;
+      G.mTarget = Math.min(2.4, CHARS[charIdx].m0 + G.prs * 0.16);
+      showBanner('NEW PR', `${G.reps} reps · ${weight()} lb · muscles up`, 1800, 'pr');
+      fanfare(); confettiBurst();
+      say('lifter', pick(BRO.pr));
+      if (isComp()) { G.cheer = 1; SFX.cheer(1.3); setTimeout(() => say('crowd', 'MEET PR!! LET\'S GOOOO!', 2200), 900); }
+    } else if (G.reps > 2 && Math.random() < .15 && !bubbles.lifter) say('lifter', pick(Math.random() < .5 ? BRO.rep : BRO.generic), 2200);
+    if (G.levelReps % REPS_PER_LOAD === 0) {
+      if (G.plates < maxPlates()) beginLoad(isPR);
+      else beginRerack(isPR);
+    }
+    updateHud();
+  }
+
+  function beginLoad(delayBanner) {
+    G.phase = 'load'; G.t = 0; G.from = G.progress; G.load = {};
+    setHint('RE-RACK · LOAD UP', '');
+    setTimeout(() => { if (state === 'play') showBanner(`+${PLATE_LB * 2} LB`, `${weight()} lb on the bar`); }, LOAD_T.slideR * 1000 / 1.3 + 50);
+  }
+
+  function beginRerack(delayBanner) {
+    G.phase = 'rerack'; G.t = 0; G.from = G.progress;
+    setHint('RE-RACKED', '');
+    SFX.rack();
+    setTimeout(() => { if (state === 'play') showBanner('RE-RACKED', 'Level up'); }, delayBanner ? 1500 : 200);
+  }
+
+  function nextLevel() {
+    G.level++;
+    G.plates = G.ex.start; G.levelReps = 0;
+    G.progress = G.ex.restP; G.phase = 'lower'; G.t = 0; G.from = G.ex.restP;
+    G.lastTap = now(); G.bend = 0;
+    updateHud();
+    const bar = barFor(G.level);
+    if (G.level === COMP_LEVEL) {
+      renderBackground();
+      showBanner('COMPETITION DAY', `Iron Tap Classic · ${bar.name}`, 3200, 'pr');
+      SFX.cheer(1.4); SFX.airhorn(); G.cheer = 1;
+      setTimeout(() => state === 'play' && say('crowd', pick(BRO.crowdIntro), 2600), 900);
+      setTimeout(() => state === 'play' && say('lifter', 'Ten levels deep and now they\'re watching. Light weight, baby!', 3000), 3600);
+    } else if (G.level < COMP_LEVEL) {
+      showBanner('NEW BAR', `${bar.name} · Level ${G.level + 1}`, 2600, 'pr');
+      SFX.ding(); SFX.clank(true);
+      say('lifter', pick([`New bar! ${bar.name}. Feels like butter.`, `Look at this ${bar.name}. Empty bar, let's GO.`, `${bar.name}?! Somebody film this.`]), 3000);
+    } else {
+      showBanner(G.ex.name.toUpperCase(), `Meet attempt ${G.level - COMP_LEVEL + 2} · ${weight()} lb`);
+      say('crowd', pick(BRO.crowd), 2200);
+    }
+  }
+
+  function spotterRack() {
+    G.phase = 'spotted'; G.t = 0; G.from = G.progress; G.spot = 1;
+    SFX.whistle(); buzz([80, 40, 120]);
+    setHint('SPOTTER RE-RACKED IT', 'warn');
+    showBanner('RACKED', 'Your spotter took it', 1400);
+    say('spotter', pick(BRO.racked));
+  }
+
+  function snapBar() {
+    G.phase = 'snap'; G.t = 0;
+    G.snap = { a: 0, fall: 0, v: 0 };
+    tone(80, .7, 'sawtooth', .1, .2); tone(2600, .15, 'square', .05, .3);
+    buzz([150, 60, 250]);
+    G.shake = 16;
+    setHint('SNAP', 'warn');
+    setTimeout(endGame, 1500);
+  }
+
+  function endGame() {
+    musicStop();
+    state = 'end';
+    $('endTitle').textContent = 'SET OVER';
+    const key = 'irontap_best_' + G.ex.id;
+    const prev = load(key) || { reps: 0 };
+    const better = G.reps > prev.reps;
+    if (better) save(key, { reps: G.reps, weight: G.maxWeight, level: G.level + 1 });
+    $('endStats').innerHTML = [
+      [G.reps, 'Total reps'], [G.prs, 'PRs hit'],
+      [G.maxWeight + ' lb', 'Heaviest'], [G.level + 1, 'Level reached'],
+    ].map(([v, l]) => `<div class="stat"><b>${v}</b><span>${l}</span></div>`).join('');
+    $('endNote').textContent = 'Your spotter re-racked it. ' + (better && G.reps > 0 ? 'NEW ALL-TIME BEST' : (prev.reps ? `Best: ${prev.reps} reps` : ''));
+    $('endScreen').classList.add('show');
+    refreshBest();
+  }
+
+  function fanfare() {
+    SFX.airhorn();
+    buzz([60, 50, 60, 50, 180]);
+  }
+
+  // =========================================================
+  // UPDATE
+  // =========================================================
+  // computer vs phone: show keyboard controls when there's a real mouse/keyboard
+  const DESK = matchMedia('(hover: hover) and (pointer: fine)').matches;
+  if (DESK) document.documentElement.classList.add('desk');
+  const T_LIFT = DESK ? 'SPACE OR CLICK TO LIFT' : 'TAP TO LIFT';
+  const T_GO = DESK ? 'SPACE · SPACE · SPACE' : 'TAP · TAP · TAP';
+
+  function update(dt) {
+    if (!G) return;
+    G.m += (G.mTarget - G.m) * Math.min(1, dt * 2.5);
+    G.shake = Math.max(0, G.shake - dt * 18);
+    if (state !== 'play') return;
+
+    const ph = G.phase;
+    if (ph === 'push' || ph === 'rep') {
+      if (ph === 'rep') {
+        G.t += dt;
+        G.progress = G.t < UP ? lerp(G.from, 1, G.t / UP) : lerp(1, 0, clamp((G.t - UP) / DOWN, 0, 1));
+        if (G.t >= UP + DOWN) { G.phase = 'push'; G.progress = 0; }
+      }
+      if (G.started) {
+        const idle = now() - G.lastTap;
+        // stop tapping → spotter runs in; if he gets to the bar, he re-racks it and the set is over
+        if (idle > graceFor(G.reps)) {
+          if (G.spot < .25 && G.spot + dt / bendTimeFor(G.reps) >= .25) say('spotter', pick(BRO.spotter), 1800);
+          G.spot = Math.min(1, G.spot + dt / bendTimeFor(G.reps));
+          if (now() - G.creakAt > .35) { G.creakAt = now(); tone(220, .08, 'square', .04); buzz(25); }
+        } else {
+          G.spot = Math.max(0, G.spot - dt / .45);
+        }
+        if (G.spot >= 1) spotterRack();
+      }
+      if (G.phase === 'push' || G.phase === 'rep') {
+        if (!G.started) setHint(T_LIFT, 'pulse');
+        else if (G.spot > 0.02) setHint('SPOTTER! KEEP TAPPING', 'warn');
+        else setHint(T_GO, '');
+      }
+    } else if (ph === 'lower') {
+      G.t += dt;
+      G.progress = lerp(G.from, 0, clamp(G.t / .35, 0, 1));
+      G.bend = Math.max(0, G.bend - dt * 3);
+      if (G.t >= .35) { G.phase = 'push'; G.progress = 0; G.lastTap = now(); }
+    } else if (ph === 'load') {
+      G.t += dt * 1.3;
+      G.bend = Math.max(0, G.bend - dt * 3);
+      const T = LOAD_T, L = G.load;
+      if (G.t >= T.rack && !L.racked) { L.racked = true; SFX.rack(); buzz(30); }
+      if (G.t >= T.slideL - .25 && !L.leftS) { L.leftS = true; SFX.slidePlate(); }
+      if (G.t >= T.slideR - .25 && !L.rightS) { L.rightS = true; SFX.slidePlate(); }
+      if (G.t >= T.slideL && !L.left) { L.left = true; buzz(30); }
+      if (G.t >= T.slideR && !L.right) {
+        L.right = true; const prev = weight(); G.plates++; G.maxWeight = Math.max(G.maxWeight, weight()); buzz(40); updateHud();
+        const n = G.plates, w = weight();
+        setTimeout(() => state === 'play' && say('lifter', pick([
+          `Two 45s = 90. Plus the ${prev} already on there = ${w}!` + pick(BRO.suffix),
+          `${n} plate${n > 1 ? 's' : ''} a side. ${n} × 90 = ${n * 90}, + the 45 bar = ${w}.` + pick(BRO.suffix),
+          `${prev} + 90 = ${w}. Math is my cardio.`,
+        ]), 3200), 1100);
+      }
+      if (G.t >= T.unrack) { G.phase = 'lower'; G.t = 0; G.from = G.ex.restP; G.progress = G.ex.restP; G.load = null; G.lastTap = now(); }
+    } else if (ph === 'rerack') {
+      G.t += dt;
+      G.progress = lerp(G.from, G.ex.restP, clamp(G.t / .4, 0, 1));
+      G.bend = Math.max(0, G.bend - dt * 3);
+      G.fade = clamp((G.t - 1.3) / .4, 0, 1);
+      if (G.t >= 1.7) nextLevel();
+    } else if (ph === 'spotted') {
+      G.t += dt;
+      G.progress = lerp(G.from, G.ex.restP, ease(clamp(G.t / .7, 0, 1)));
+      if (G.t >= .8 && !G.racked) { G.racked = true; SFX.rack(); buzz(60); }
+      if (G.t >= 1.6 && state === 'play') endGame();
+    } else if (ph === 'snap') {
+      G.t += dt;
+      const s = G.snap;
+      s.a = Math.min(1.15, s.a + dt * 3.2);
+      s.v += 900 * dt; s.fall += s.v * dt;
+    }
+    if (ph !== 'rerack') G.fade = Math.max(0, G.fade - dt * 2.5);
+    if (ph !== 'push' && ph !== 'rep' && ph !== 'spotted') G.spot = Math.max(0, G.spot - dt / .45);
+
+    $('stressMeter').firstElementChild.style.width = (G.spot * 100) + '%';
+    $('stressLbl').textContent = G.spot > .6 ? 'Spotter grabbing the bar' : G.spot > .02 ? 'Spotter coming' : `Tap within ${graceFor(G.reps).toFixed(1)}s`;
+
+    for (const p of G.pops) { p.y += 50 * dt; p.life -= dt * 1.6; }
+    G.pops = G.pops.filter(p => p.life > 0);
+  }
+
+  // =========================================================
+  // BACKGROUND — dark hardcore gym under a single spotlight
+  // =========================================================
+  function rng(seed) { return () => (seed = (seed * 16807) % 2147483647) / 2147483647; }
+
+  function renderBackground() {
+    bgCanvas.width = W * DPR; bgCanvas.height = H * DPR;
+    const b = bgCanvas.getContext('2d');
+    b.setTransform(DPR, 0, 0, DPR, 0, 0);
+    if (G && G.level >= COMP_LEVEL && mode === 'lift') { renderCompBackground(b); return; }
+    const R = rng(11);
+
+    // brick wall
+    b.fillStyle = '#2a1812'; b.fillRect(0, 0, W, floorY);
+    const bw = 30, bh = 12;
+    for (let row = 0, y = 0; y < floorY; row++, y += bh) {
+      for (let x = (row % 2) * -bw / 2; x < W; x += bw) {
+        const v = R();
+        b.fillStyle = `rgb(${118 + v * 38 | 0},${54 + v * 18 | 0},${40 + v * 12 | 0})`;
+        b.fillRect(x + 1, y + 1, bw - 2, bh - 2);
+        b.fillStyle = 'rgba(255,255,255,.05)'; b.fillRect(x + 1, y + 1, bw - 2, 1.5);
+      }
+    }
+    // warm overhead light on the wall, darker toward the edges
+    let g = b.createRadialGradient(W / 2, 0, 10, W / 2, floorY * .4, Math.max(W, floorY) * .9);
+    g.addColorStop(0, 'rgba(255,214,160,.10)'); g.addColorStop(.5, 'rgba(0,0,0,.35)'); g.addColorStop(1, 'rgba(0,0,0,.72)');
+    b.fillStyle = g; b.fillRect(0, 0, W, floorY);
+
+    // wall mirrors
+    const mTop = Math.max(Y(84), 64), mBot = Y(26);
+    b.fillStyle = '#111'; b.fillRect(6, mTop - 4, W - 12, mBot - mTop + 8);
+    g = b.createLinearGradient(0, mTop, 0, mBot);
+    g.addColorStop(0, '#3a434a'); g.addColorStop(1, '#1d2226');
+    b.fillStyle = g; b.fillRect(10, mTop, W - 20, mBot - mTop);
+    b.save(); b.beginPath(); b.rect(10, mTop, W - 20, mBot - mTop); b.clip();
+    b.fillStyle = 'rgba(255,255,255,.06)';
+    for (let i = 0; i < 4; i++) { const x0 = W * (.1 + i * .27); b.beginPath(); b.moveTo(x0, mTop); b.lineTo(x0 + 40, mTop); b.lineTo(x0 - 30, mBot); b.lineTo(x0 - 70, mBot); b.fill(); }
+    b.fillStyle = '#0b0b0b'; for (let x = 130; x < W - 20; x += 120) b.fillRect(x, mTop, 2, mBot - mTop);
+    b.restore();
+
+    // sign board
+    const fs = Math.min(30, W * .07), sh = fs * 1.7, sw = Math.min(W - 24, fs * 9.5);
+    const sx = W / 2 - sw / 2, sy = Math.max(6, mTop - sh - 8);
+    b.fillStyle = '#0d0d0d'; b.fillRect(sx, sy, sw, sh);
+    b.strokeStyle = '#c9a24a'; b.lineWidth = 2; b.strokeRect(sx + 3, sy + 3, sw - 6, sh - 6);
+    b.textAlign = 'center'; b.textBaseline = 'middle';
+    b.font = `700 ${fs}px Oswald, sans-serif`;
+    b.save(); b.shadowColor = 'rgba(255,90,60,.8)'; b.shadowBlur = 14; b.fillStyle = '#ff6a50';
+    b.fillText('IRON TAP GYM', W / 2, sy + sh * .44); b.restore();
+    b.font = `700 ${Math.max(7, fs * .28)}px Inter, sans-serif`; b.fillStyle = '#d9cbb5';
+    b.fillText('HARDCORE  ·  EST 1979', W / 2, sy + sh * .82);
+
+    // dumbbell rack along the wall
+    const rTop = Y(26), rMid = Y(14);
+    let rg = b.createLinearGradient(0, rTop, 0, floorY);
+    rg.addColorStop(0, '#26282b'); rg.addColorStop(1, '#141516');
+    b.fillStyle = rg; b.fillRect(0, rTop, W, floorY - rTop);
+    b.fillStyle = '#4a4e52'; b.fillRect(0, rTop, W, 2); b.fillRect(0, rMid, W, 2);
+    const dh = Math.max(6, (rMid - rTop) * .62);
+    for (let x = 4, i = 0; x < W; x += dh * 2.5, i++) {
+      for (const yy of [rTop + 3, rMid + 3]) {
+        const h = dh * (.8 + (i % 4) * .07), cy = yy + dh * .55;
+        b.fillStyle = '#b9bdc1'; b.fillRect(x + h * .4, cy - 1, h * 1.1, 2);
+        for (const hx of [x, x + h * 1.45]) {
+          const hg = b.createLinearGradient(0, cy - h / 2, 0, cy + h / 2);
+          hg.addColorStop(0, '#5a5d60'); hg.addColorStop(.3, '#2a2b2d'); hg.addColorStop(1, '#0e0e0f');
+          b.fillStyle = hg; b.fillRect(hx, cy - h / 2, h * .5, h);
+        }
+      }
+    }
+
+    // overhead lamps
+    for (const lx of [W * .2, W * .8]) {
+      b.fillStyle = '#111'; b.fillRect(lx - 1, 0, 2, 10);
+      b.beginPath(); b.moveTo(lx - 12, 20); b.lineTo(lx + 12, 20); b.lineTo(lx + 5, 10); b.lineTo(lx - 5, 10); b.fill();
+      const lg = b.createRadialGradient(lx, 22, 1, lx, 22, H * .5);
+      lg.addColorStop(0, 'rgba(255,220,170,.28)'); lg.addColorStop(1, 'rgba(255,220,170,0)');
+      b.fillStyle = lg; b.fillRect(0, 0, W, floorY);
+      b.fillStyle = '#fff3dc'; b.beginPath(); b.ellipse(lx, 20, 8, 2, 0, 0, 7); b.fill();
+    }
+
+    // floor: rubber tiles + wooden lifting platform
+    g = b.createLinearGradient(0, floorY, 0, H);
+    g.addColorStop(0, '#2a2a2b'); g.addColorStop(1, '#141414');
+    b.fillStyle = g; b.fillRect(0, floorY, W, H - floorY);
+    b.fillStyle = 'rgba(255,255,255,.05)';
+    for (let k = 0; k < 160; k++) b.fillRect(R() * W, floorY + R() * (H - floorY), 1.5, 1.5);
+    const pw = Math.min(W * .9, 96 * u);
+    g = b.createLinearGradient(0, floorY, 0, H);
+    g.addColorStop(0, '#a27445'); g.addColorStop(1, '#6b4a2b');
+    b.fillStyle = g; b.fillRect(W / 2 - pw * .3, floorY, pw * .6, H - floorY);
+    b.fillStyle = 'rgba(0,0,0,.2)'; for (let x = W / 2 - pw * .3; x < W / 2 + pw * .3; x += 13) b.fillRect(x, floorY, 1, H - floorY);
+    b.fillStyle = 'rgba(255,255,255,.12)'; b.fillRect(0, floorY, W, 1);
+
+    // gentle vignette
+    g = b.createRadialGradient(W / 2, H * .55, Math.min(W, H) * .3, W / 2, H * .55, Math.max(W, H) * .85);
+    g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(0,0,0,.5)');
+    b.fillStyle = g; b.fillRect(0, 0, W, H);
+  }
+
+  // ---- powerlifting meet: arena, stage lights, banner, packed bleachers, raised platform
+  function renderCompBackground(b) {
+    const R = rng(23);
+    let g = b.createLinearGradient(0, 0, 0, floorY);
+    g.addColorStop(0, '#05060a'); g.addColorStop(1, '#141824');
+    b.fillStyle = g; b.fillRect(0, 0, W, H);
+    // bleachers packed with fans (tiny heads + shirts, in tiers)
+    const top = Math.max(Y(80), 60);
+    for (let row = 0; row < 9; row++) {
+      const y = top + row * Math.max(9, (floorY - top) * .075), sz = 3 + row * .45;
+      b.fillStyle = `rgba(30,34,46,${.6 + row * .03})`; b.fillRect(0, y + sz * 1.4, W, sz * 1.4);
+      for (let x = (row % 2) * sz * 1.4; x < W; x += sz * 2.9) {
+        const shirt = ['#3a4a7a', '#7a2a2a', '#2a6a4a', '#6a5a2a', '#4a2a6a', '#2a2a2a'][R() * 6 | 0];
+        b.fillStyle = shirt; b.fillRect(x - sz * .9, y + sz * .6, sz * 1.8, sz * 1.6);
+        b.fillStyle = ['#c99a74', '#6b3f27', '#e2b48c', '#8d5a3b', '#b07f5c'][R() * 5 | 0];
+        b.beginPath(); b.arc(x, y, sz * .75, 0, 7); b.fill();
+      }
+    }
+    g = b.createLinearGradient(0, top, 0, floorY); g.addColorStop(0, 'rgba(5,6,10,.25)'); g.addColorStop(1, 'rgba(5,6,10,.75)');
+    b.fillStyle = g; b.fillRect(0, top - 10, W, floorY - top + 10);
+    // championship banner
+    const fs = Math.min(26, W * .06), bh = fs * 2.2, bw = Math.min(W - 16, fs * 15);
+    const bx = W / 2 - bw / 2, by = 8;
+    g = b.createLinearGradient(0, by, 0, by + bh); g.addColorStop(0, '#1e3f8a'); g.addColorStop(1, '#0e2257');
+    b.fillStyle = g; b.fillRect(bx, by, bw, bh);
+    b.fillStyle = '#c9971d'; b.fillRect(bx, by, bw, 3); b.fillRect(bx, by + bh - 3, bw, 3);
+    b.textAlign = 'center'; b.textBaseline = 'middle';
+    b.font = `700 ${fs}px Oswald, sans-serif`; b.fillStyle = '#fff';
+    b.fillText('IRON TAP CLASSIC', W / 2, by + bh * .42);
+    b.font = `800 ${Math.max(7, fs * .33)}px Inter, sans-serif`; b.fillStyle = '#ffd86b';
+    b.fillText('POWERLIFTING CHAMPIONSHIP', W / 2, by + bh * .78);
+    // coloured stage-light beams
+    b.save(); b.globalCompositeOperation = 'lighter';
+    [[.12, 'rgba(80,140,255,.16)'], [.88, 'rgba(255,80,120,.14)'], [.35, 'rgba(255,220,150,.12)'], [.65, 'rgba(255,220,150,.12)']].forEach(([fx, col]) => {
+      const x = W * fx; g = b.createLinearGradient(0, 0, 0, floorY); g.addColorStop(0, col); g.addColorStop(1, 'rgba(0,0,0,0)');
+      b.fillStyle = g; b.beginPath(); b.moveTo(x - 6, 0); b.lineTo(x + 6, 0); b.lineTo(W / 2 + (x - W / 2) * .2 + 70, floorY); b.lineTo(W / 2 + (x - W / 2) * .2 - 70, floorY); b.fill();
+    });
+    g = b.createRadialGradient(W / 2, floorY, 10, W / 2, floorY, W * .6);
+    g.addColorStop(0, 'rgba(255,230,190,.28)'); g.addColorStop(1, 'rgba(255,230,190,0)');
+    b.fillStyle = g; b.fillRect(0, 0, W, H);
+    b.restore();
+    // raised competition platform
+    g = b.createLinearGradient(0, floorY, 0, H); g.addColorStop(0, '#3a2a1c'); g.addColorStop(1, '#1a120c');
+    b.fillStyle = '#0b0c10'; b.fillRect(0, floorY, W, H - floorY);
+    const pw = Math.min(W * .96, 100 * u);
+    b.fillStyle = g; b.fillRect(W / 2 - pw / 2, floorY, pw, H - floorY);
+    b.fillStyle = '#c9971d'; b.fillRect(W / 2 - pw / 2, floorY, pw, 2);
+    b.fillStyle = 'rgba(255,255,255,.08)'; for (let x = W / 2 - pw / 2; x < W / 2 + pw / 2; x += 16) b.fillRect(x, floorY + 2, 1, H - floorY);
+  }
+
+  // ---- live crowd in front of the platform + judges' lights + camera flashes
+  function drawMeetFX(dt) {
+    G.cheer = Math.max(0, (G.cheer || 0) - dt * .45);
+    G.judges = Math.max(0, (G.judges || 0) - dt);
+    const tt = performance.now() / 1000, ch = G.cheer;
+    // camera flashes in the stands
+    if (Math.random() < dt * (2 + ch * 10)) G.flashes.push({ x: Math.random() * W, y: Y(80) + Math.random() * (Y(26) - Y(80)), life: 1 });
+    G.flashes = G.flashes.filter(f => (f.life -= dt * 5) > 0);
+    ctx.save(); ctx.globalCompositeOperation = 'lighter';
+    for (const f of G.flashes) {
+      const g = ctx.createRadialGradient(f.x, f.y, 0, f.x, f.y, 14);
+      g.addColorStop(0, `rgba(255,255,255,${f.life})`); g.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx.fillStyle = g; ctx.fillRect(f.x - 14, f.y - 14, 28, 28);
+    }
+    ctx.restore();
+    // judges' lights
+    const jx = W - 16 - 3 * 18, jy = Y(88);
+    ctx.fillStyle = 'rgba(10,12,18,.85)'; rrect(jx - 8, jy - 13, 3 * 18 + 8, 26, 6); ctx.fill();
+    for (let i = 0; i < 3; i++) {
+      const on = G.judges > 0;
+      ctx.fillStyle = on ? '#ffffff' : '#2a2e38';
+      if (on) { ctx.shadowColor = '#fff'; ctx.shadowBlur = 12; }
+      ctx.beginPath(); ctx.arc(jx + 5 + i * 18, jy, 6, 0, 7); ctx.fill(); ctx.shadowBlur = 0;
+    }
+    if (G.judges > .2) {
+      ctx.fillStyle = `rgba(255,255,255,${Math.min(1, G.judges)})`; ctx.font = '800 10px Inter, sans-serif'; ctx.textAlign = 'right';
+      ctx.fillText('GOOD LIFT', W - 14, jy + 22);
+    }
+    // front-row fans (backs of heads), arms up and waving when you rep
+    const n = Math.ceil(W / 34) + 1, base = H + 16;
+    for (let i = 0; i < n; i++) {
+      const x = i * 34 + (i % 2) * 8 - 6, bob = Math.sin(tt * 9 + i * 1.3) * ch * 4;
+      const hy = base - 34 - (i % 3) * 5 - bob;
+      const shirt = ['#26304a', '#3a1c1c', '#1c3a2a', '#2e2a1c', '#2a1c3a'][i % 5];
+      const up = ch > .15 && (i % 3 !== 1 || ch > .6);
+      if (up) {
+        for (const s of [-1, 1]) {
+          const wave = Math.sin(tt * 10 + i + s) * 5 * ch;
+          ctx.strokeStyle = ['#c99a74', '#6b3f27', '#e2b48c', '#8d5a3b'][i % 4]; ctx.lineWidth = 5; ctx.lineCap = 'round';
+          ctx.beginPath(); ctx.moveTo(x + s * 11, hy + 14); ctx.lineTo(x + s * 15 + wave, hy - 18 - ch * 10); ctx.stroke();
+          ctx.fillStyle = ctx.strokeStyle; ctx.beginPath(); ctx.arc(x + s * 15 + wave, hy - 20 - ch * 10, 4, 0, 7); ctx.fill();
+        }
+        if (i % 4 === 0) { ctx.fillStyle = '#111'; ctx.fillRect(x + 12, hy - 34 - ch * 10, 8, 13); ctx.fillStyle = 'rgba(200,230,255,.9)'; ctx.fillRect(x + 13, hy - 33 - ch * 10, 6, 10); }
+      }
+      ctx.fillStyle = shirt; rrect(x - 15, hy + 8, 30, 40, 10); ctx.fill();
+      ctx.fillStyle = ['#2a1c12', '#120d0a', '#5a4024', '#1d1510'][i % 4];
+      ctx.beginPath(); ctx.arc(x, hy, 11, 0, 7); ctx.fill();
+      ctx.fillStyle = 'rgba(255,220,180,.18)'; ctx.beginPath(); ctx.arc(x - 3, hy - 4, 5, 0, 7); ctx.fill();
+    }
+    // who's yelling
+    const k = Math.floor(n / 2) - 2;
+    anchors.crowd = { x: k * 34 + 10, y: base - 60 };
+  }
+
+  // drifting haze/dust in the light
+  const motes = Array.from({ length: 45 }, () => ({ x: Math.random(), y: Math.random(), s: .3 + Math.random() * .7, v: .01 + Math.random() * .02 }));
+  function drawMotes(dt) {
+    ctx.save(); ctx.globalCompositeOperation = 'lighter';
+    for (const m of motes) {
+      m.y -= m.v * dt; m.x += Math.sin(m.y * 20) * .0006;
+      if (m.y < 0) { m.y = 1; m.x = Math.random(); }
+      const x = W / 2 + (m.x - .5) * W * .7 * (0.3 + m.y), y = m.y * floorY;
+      ctx.fillStyle = `rgba(255,230,200,${.08 * m.s})`;
+      ctx.beginPath(); ctx.arc(x, y, 1 + m.s, 0, 7); ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  // =========================================================
+  // DRAW PRIMITIVES
+  // =========================================================
+  function P(pt) { return { x: X(pt.x), y: Y(pt.y) }; }
+  // ---- shading helpers: light comes from above, slightly left
+  const LIGHT = { x: -.45, y: -.9 };
+  function rgbOf(c) {
+    if (c[0] === '#') { const n = parseInt(c.slice(1), 16); return [n >> 16, (n >> 8) & 255, n & 255]; }
+    const m = c.match(/\d+/g); return [+m[0], +m[1], +m[2]];
+  }
+  function tint(c, amt) {
+    const [r, g, b] = rgbOf(c), f = amt < 0 ? 0 : 255, t = Math.abs(amt);
+    return `rgb(${Math.round(lerp(r, f, t))},${Math.round(lerp(g, f, t))},${Math.round(lerp(b, f, t))})`;
+  }
+  function capsule(a, b, ra, rb, color) {
+    const dx = b.x - a.x, dy = b.y - a.y, L = Math.hypot(dx, dy) || 1;
+    let nx = -dy / L, ny = dx / L;
+    if (nx * LIGHT.x + ny * LIGHT.y < 0) { nx = -nx; ny = -ny; }   // n points toward the light
+    const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2, r = Math.max(ra, rb);
+    const g = ctx.createLinearGradient(mx - nx * r, my - ny * r, mx + nx * r, my + ny * r);
+    g.addColorStop(0, tint(color, -.42)); g.addColorStop(.32, tint(color, -.12));
+    g.addColorStop(.62, color); g.addColorStop(.82, tint(color, .16)); g.addColorStop(1, tint(color, -.05));
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.moveTo(a.x + nx * ra, a.y + ny * ra); ctx.lineTo(b.x + nx * rb, b.y + ny * rb);
+    ctx.lineTo(b.x - nx * rb, b.y - ny * rb); ctx.lineTo(a.x - nx * ra, a.y - ny * ra); ctx.closePath(); ctx.fill();
+    ctx.beginPath(); ctx.arc(a.x, a.y, ra, 0, 7); ctx.fill();
+    ctx.beginPath(); ctx.arc(b.x, b.y, rb, 0, 7); ctx.fill();
+  }
+  // rounded muscle belly with a soft highlight toward the light
+  function bulge(a, b, t, lenF, rad, color, offset = 0) {
+    const dx = b.x - a.x, dy = b.y - a.y, L = Math.hypot(dx, dy) || 1;
+    const nx = -dy / L, ny = dx / L, ang = Math.atan2(dy, dx);
+    const rx = L * lenF / 2;
+    ctx.save();
+    ctx.translate(a.x + dx * t + nx * offset, a.y + dy * t + ny * offset);
+    ctx.rotate(ang);
+    const lx = LIGHT.x * Math.cos(-ang) - LIGHT.y * Math.sin(-ang), ly = LIGHT.x * Math.sin(-ang) + LIGHT.y * Math.cos(-ang);
+    const R = Math.max(rx, rad);
+    const g = ctx.createRadialGradient(lx * rx * .35, ly * rad * .45, R * .05, 0, 0, R * 1.05);
+    g.addColorStop(0, tint(color, .2)); g.addColorStop(.45, color); g.addColorStop(1, tint(color, -.3));
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.ellipse(0, 0, rx, rad, 0, 0, 7); ctx.fill();
+    ctx.restore();
+  }
+  function shadedEllipse(x, y, rx, ry, color) {
+    const R = Math.max(rx, ry);
+    const g = ctx.createRadialGradient(x + LIGHT.x * rx * .35, y + LIGHT.y * ry * .4, R * .05, x, y, R * 1.05);
+    g.addColorStop(0, tint(color, .2)); g.addColorStop(.5, color); g.addColorStop(1, tint(color, -.32));
+    ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(x, y, rx, ry, 0, 0, 7); ctx.fill();
+  }
+  function rrect(x, y, w, h, r) {
+    ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+  }
+
+  // =========================================================
+  // LIGHTING: draw anything as a low-key silhouette with rim light
+  // =========================================================
+  function lit(fn, opt = {}) {
+    const alpha = opt.alpha ?? 1, d = opt.dpr || DPR;
+    const main = ctx, tw = main.canvas.width, th = main.canvas.height;
+    if (figC.width !== tw || figC.height !== th) { figC.width = rimC.width = tw; figC.height = rimC.height = th; }
+    const f = figC.getContext('2d');
+    f.setTransform(1, 0, 0, 1, 0, 0); f.globalCompositeOperation = 'source-over'; f.clearRect(0, 0, tw, th);
+    f.setTransform(main.getTransform());
+    ctx = f; fn(); ctx = main;
+    f.setTransform(1, 0, 0, 1, 0, 0);
+    // warm key light from overhead, falling off toward the floor (ambient occlusion)
+    f.globalCompositeOperation = 'source-atop';
+    const g = f.createLinearGradient(0, 0, 0, th);
+    g.addColorStop(0, 'rgba(255,228,190,.10)'); g.addColorStop(.45, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(10,6,4,.32)');
+    f.fillStyle = g; f.fillRect(0, 0, tw, th);
+    f.globalCompositeOperation = 'source-over';
+    main.save();
+    main.setTransform(1, 0, 0, 1, 0, 0);
+    main.globalAlpha = alpha;
+    // soft shadow so the body sits in the scene
+    main.shadowColor = 'rgba(0,0,0,.55)'; main.shadowBlur = 10 * d; main.shadowOffsetY = 3 * d;
+    main.drawImage(figC, 0, 0);
+    main.restore();
+  }
+
+  // =========================================================
+  // BODY GEOMETRY
+  // =========================================================
+  function drawLower(J, ch, m) {
+    const skin = ch.skin, dk = shade(skin, -0.35), hl = shade(skin, 0.15);
+    for (let s = 0; s < 2; s++) {
+      const hip = P(J.hip[s]), kn = P(J.kn[s]), ft = P(J.ft[s]);
+      capsule(kn, ft, 2.0 * m * u, 1.2 * u * Math.sqrt(m), skin);
+      bulge(kn, ft, .3, .55, 2.5 * m * u, dk);
+      bulge(kn, ft, .3, .5, 2.1 * m * u, skin);
+      capsule(hip, kn, 3.5 * m * u, 2.2 * m * u, skin);
+      bulge(hip, kn, .55, .7, 3.9 * m * u, dk);
+      bulge(hip, kn, .52, .62, 3.4 * m * u, skin);
+      bulge(hip, kn, .62, .35, 1.3 * m * u, hl, (s ? -1 : 1) * u);
+      ctx.fillStyle = '#222'; rrect(ft.x - 2.6 * u, ft.y - 2.4 * u, 5.2 * u, 2.4 * u, u); ctx.fill();
+      const mid = { x: lerp(hip.x, kn.x, .5), y: lerp(hip.y, kn.y, .5) };
+      capsule(hip, mid, 3.9 * m * u, 3.6 * m * u, ch.shorts);
+    }
+  }
+
+  function torsoGeom(J, m) {
+    const shL = J.sh[0], shR = J.sh[1], hipL = J.hip[0], hipR = J.hip[1];
+    return {
+      shL, shR, cx: (shL.x + shR.x) / 2, hcx: (hipL.x + hipR.x) / 2,
+      shY: (shL.y + shR.y) / 2, hipY: (hipL.y + hipR.y) / 2,
+      waist: 5.2 + (m - 1) * 0.9, len: (shL.y + shR.y) / 2 - (hipL.y + hipR.y) / 2,
+    };
+  }
+
+  function drawTorso(J, ch, m) {
+    const T = torsoGeom(J, m);
+    const skin = ch.skin, dk = shade(skin, -0.35), hl = shade(skin, 0.15);
+    const at = f => ({ x: lerp(T.cx, T.hcx, f), y: lerp(T.shY, T.hipY, f) });
+    const wp = at(.72);
+    {
+      const base = ch.shirt || skin, x0 = X(T.shL.x - 2.2 * m), x1 = X(T.shR.x + 2.2 * m);
+      const g = ctx.createLinearGradient(x0, 0, x1, 0);
+      g.addColorStop(0, tint(base, -.4)); g.addColorStop(.18, tint(base, -.08)); g.addColorStop(.4, tint(base, .12));
+      g.addColorStop(.62, base); g.addColorStop(.85, tint(base, -.15)); g.addColorStop(1, tint(base, -.42));
+      ctx.fillStyle = g;
+    }
+    ctx.beginPath();
+    ctx.moveTo(X(T.shL.x - 1.2), Y(T.shL.y + .6));
+    ctx.quadraticCurveTo(X(T.shL.x - 2.2 * m), Y(lerp(T.shY, T.hipY, .3)), X(wp.x - T.waist), Y(wp.y));
+    ctx.lineTo(X(T.hcx - 6), Y(T.hipY - 1.2));
+    ctx.lineTo(X(T.hcx + 6), Y(T.hipY - 1.2));
+    ctx.lineTo(X(wp.x + T.waist), Y(wp.y));
+    ctx.quadraticCurveTo(X(T.shR.x + 2.2 * m), Y(lerp(T.shY, T.hipY, .3)), X(T.shR.x + 1.2), Y(T.shR.y + .6));
+    ctx.closePath(); ctx.fill();
+
+    if (!ch.shirt) {
+      const pecY = at(.2), pw = Math.abs(T.shR.x - T.shL.x) * 0.25, ph = Math.max(1.6, Math.abs(T.len) * 0.16) * (0.85 + 0.25 * m);
+      for (const s of [-1, 1]) {
+        ctx.fillStyle = dk; ctx.beginPath(); ctx.ellipse(X(pecY.x + s * pw), Y(pecY.y) + .6 * u, pw * u * 1.05, ph * u * 1.05, 0, 0, 7); ctx.fill();
+        ctx.fillStyle = skin; ctx.beginPath(); ctx.ellipse(X(pecY.x + s * pw), Y(pecY.y), pw * u, ph * u, 0, 0, 7); ctx.fill();
+        ctx.fillStyle = hl; ctx.beginPath(); ctx.ellipse(X(pecY.x + s * pw * 1.1), Y(pecY.y) - ph * u * .4, pw * u * .55, ph * u * .3, 0, 0, 7); ctx.fill();
+      }
+      const aw = 1.6 * (0.8 + 0.2 * m), ah = Math.max(.8, Math.abs(T.len) * 0.085);
+      for (const [col, ins] of [[dk, 0], [skin, 1]]) {
+        ctx.fillStyle = col;
+        for (let r = 0; r < 3; r++) {
+          const p = at(.42 + r * .12);
+          for (const s of [-1, 1]) { rrect(X(p.x + s * (aw / 2 + .25)) - aw * u / 2 + ins, Y(p.y) - ah * u / 2 + ins, aw * u - ins * 2, ah * u - ins * 2, ah * u * .38); ctx.fill(); }
+        }
+      }
+    }
+    const bp = at(.86);
+    ctx.fillStyle = '#2a1d12';
+    ctx.fillRect(X(bp.x - T.waist - .6), Y(bp.y + 1.6), (T.waist * 2 + 1.2) * u, Math.max(3, 3.2 * u));
+    ctx.fillStyle = ch.shorts; ctx.fillRect(X(T.hcx - 6.2), Y(T.hipY + .2), 12.4 * u, 2.2 * u);
+
+    const nb = at(-.02);
+    ctx.fillStyle = ch.shirt ? skin : dk;
+    ctx.beginPath();
+    ctx.moveTo(X(T.shL.x + .5), Y(T.shL.y + .4));
+    ctx.quadraticCurveTo(X(nb.x - 2), Y(nb.y + 3.5 * m), X(nb.x - 1.6), Y(nb.y + 5));
+    ctx.lineTo(X(nb.x + 1.6), Y(nb.y + 5));
+    ctx.quadraticCurveTo(X(nb.x + 2), Y(nb.y + 3.5 * m), X(T.shR.x - .5), Y(T.shR.y + .4));
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle = skin;
+    ctx.fillRect(X(nb.x - 1.9 - .35 * m), Y(nb.y + 6), (3.8 + .7 * m) * u, 6 * u);
+  }
+
+  function drawArms(J, ch, m) {
+    const skin = ch.skin, dk = shade(skin, -0.35), hl = shade(skin, 0.18);
+    for (let s = 0; s < 2; s++) {
+      const sh = P(J.sh[s]), el = P(J.el[s]), ha = P(J.ha[s]);
+      capsule(el, ha, 1.9 * m * u, 1.25 * u * Math.sqrt(m), skin);
+      bulge(el, ha, .3, .55, 2.3 * m * u, skin);
+      capsule(sh, el, 2.2 * m * u, 1.8 * m * u, skin);
+      bulge(sh, el, .55, .7, 2.9 * m * u, dk);
+      bulge(sh, el, .52, .62, 2.55 * m * u, skin);
+      bulge(sh, el, .5, .35, 1.0 * m * u, hl, (s ? 1 : -1) * .8 * u);
+      if (ch.shirt) bulge(sh, el, .15, .5, 2.8 * m * u, ch.shirt);
+      ctx.fillStyle = ch.shirt || skin;
+      ctx.beginPath(); ctx.arc(sh.x, sh.y, 3.1 * m * u, 0, 7); ctx.fill();
+      if (!ch.shirt) { ctx.fillStyle = hl; ctx.beginPath(); ctx.arc(sh.x + (s ? 1 : -1) * .6 * u, sh.y - 1.1 * m * u, 1.1 * m * u, 0, 7); ctx.fill(); }
+      ctx.fillStyle = skin; ctx.beginPath(); ctx.arc(ha.x, ha.y, 1.7 * u, 0, 7); ctx.fill();
+    }
+  }
+
+  // Head: shaded skull + jaw, ears, face, hair
+  function drawHead(J, ch) {
+    const c = P(J.head), r = 4.7 * u;
+    const skin = ch.skin, strain = G && (G.spot > .25 || G.phase === 'rep') ? 1 : 0;
+    // ears
+    shadedEllipse(c.x - r * .97, c.y + r * .08, r * .2, r * .3, tint(skin, -.08));
+    shadedEllipse(c.x + r * .97, c.y + r * .08, r * .2, r * .3, tint(skin, -.08));
+    // skull + jaw
+    const g = ctx.createRadialGradient(c.x - r * .3, c.y - r * .45, r * .1, c.x, c.y + r * .1, r * 1.35);
+    g.addColorStop(0, tint(skin, .18)); g.addColorStop(.55, skin); g.addColorStop(1, tint(skin, -.38));
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.ellipse(c.x, c.y - r * .05, r * .92, r * 1.02, 0, 0, 7); ctx.fill();
+    rrect(c.x - r * .8, c.y, r * 1.6, r * .98, r * .42); ctx.fill();
+    // eye sockets + cheekbone shading
+    ctx.fillStyle = 'rgba(40,20,10,.18)';
+    ctx.beginPath(); ctx.ellipse(c.x - r * .34, c.y + r * .02, r * .24, r * .15, 0, 0, 7); ctx.ellipse(c.x + r * .34, c.y + r * .02, r * .24, r * .15, 0, 0, 7); ctx.fill();
+    // brows
+    const browDrop = strain ? .08 : 0;
+    ctx.fillStyle = tint(ch.hairCol, -.2);
+    for (const s of [-1, 1]) {
+      ctx.save(); ctx.translate(c.x + s * r * .34, c.y - r * (.2 - browDrop)); ctx.rotate(s * (strain ? .22 : .06));
+      rrect(-r * .24, -r * .055, r * .48, r * .11, r * .05); ctx.fill(); ctx.restore();
+    }
+    // eyes
+    for (const s of [-1, 1]) {
+      const ex = c.x + s * r * .34, ey = c.y + r * .03;
+      ctx.fillStyle = '#efe9e2'; ctx.beginPath(); ctx.ellipse(ex, ey, r * .13, r * (strain ? .045 : .075), 0, 0, 7); ctx.fill();
+      ctx.fillStyle = '#2a1a10'; ctx.beginPath(); ctx.arc(ex, ey, r * (strain ? .04 : .06), 0, 7); ctx.fill();
+      ctx.strokeStyle = 'rgba(30,15,8,.6)'; ctx.lineWidth = Math.max(1, r * .035);
+      ctx.beginPath(); ctx.ellipse(ex, ey, r * .14, r * .085, 0, Math.PI * 1.1, Math.PI * 1.9); ctx.stroke();
+    }
+    // nose: shadowed side + nostrils
+    ctx.fillStyle = 'rgba(50,25,12,.28)';
+    ctx.beginPath(); ctx.moveTo(c.x + r * .02, c.y + r * .05); ctx.lineTo(c.x + r * .16, c.y + r * .42); ctx.lineTo(c.x - r * .02, c.y + r * .44); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = 'rgba(30,12,6,.45)';
+    ctx.beginPath(); ctx.ellipse(c.x - r * .08, c.y + r * .44, r * .05, r * .03, 0, 0, 7); ctx.ellipse(c.x + r * .1, c.y + r * .44, r * .05, r * .03, 0, 0, 7); ctx.fill();
+    // mouth: gritted teeth when grinding
+    if (strain) {
+      ctx.fillStyle = '#3b1a12'; rrect(c.x - r * .3, c.y + r * .58, r * .6, r * .18, r * .06); ctx.fill();
+      ctx.fillStyle = '#e9e3da'; rrect(c.x - r * .26, c.y + r * .6, r * .52, r * .13, r * .04); ctx.fill();
+      ctx.strokeStyle = 'rgba(60,40,30,.5)'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(c.x - r * .26, c.y + r * .665); ctx.lineTo(c.x + r * .26, c.y + r * .665); ctx.stroke();
+    } else {
+      ctx.strokeStyle = tint(skin, -.5); ctx.lineWidth = Math.max(1.2, r * .06); ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(c.x - r * .24, c.y + r * .66); ctx.quadraticCurveTo(c.x, c.y + r * .7, c.x + r * .24, c.y + r * .66); ctx.stroke();
+      ctx.fillStyle = 'rgba(255,255,255,.08)'; ctx.fillRect(c.x - r * .16, c.y + r * .72, r * .32, r * .05);
+    }
+    // jaw shadow
+    ctx.fillStyle = 'rgba(30,15,8,.18)';
+    ctx.beginPath(); ctx.ellipse(c.x, c.y + r * .92, r * .65, r * .14, 0, 0, 7); ctx.fill();
+
+    // hair
+    const hg = ctx.createLinearGradient(0, c.y - r * 1.9, 0, c.y - r * .3);
+    hg.addColorStop(0, tint(ch.hairCol, .22)); hg.addColorStop(1, tint(ch.hairCol, -.25));
+    ctx.fillStyle = hg;
+    if (ch.hair === 'flattop') {
+      rrect(c.x - r * .9, c.y - r * 1.36, r * 1.8, r * .82, r * .1); ctx.fill();
+      ctx.fillStyle = tint(ch.hairCol, -.35);
+      ctx.fillRect(c.x - r * .94, c.y - r * .62, r * .16, r * .48); ctx.fillRect(c.x + r * .78, c.y - r * .62, r * .16, r * .48);
+    } else if (ch.hair === 'hightop') {
+      rrect(c.x - r * .86, c.y - r * 1.85, r * 1.72, r * 1.3, r * .22); ctx.fill();
+      ctx.fillStyle = 'rgba(0,0,0,.35)'; ctx.fillRect(c.x - r * .93, c.y - r * .62, r * .14, r * .5); ctx.fillRect(c.x + r * .79, c.y - r * .62, r * .14, r * .5);
+    } else if (ch.hair === 'slick') {
+      ctx.beginPath(); ctx.ellipse(c.x, c.y - r * .42, r * 1.0, r * .8, 0, Math.PI, 0); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(c.x - r * .05, c.y - r * .95, r * .88, r * .34, -.12, 0, 7); ctx.fill();
+      ctx.strokeStyle = 'rgba(255,255,255,.18)'; ctx.lineWidth = Math.max(1, r * .05);
+      for (let i = 0; i < 3; i++) { ctx.beginPath(); ctx.moveTo(c.x - r * (.5 - i * .3), c.y - r * .85); ctx.quadraticCurveTo(c.x - r * (.3 - i * .3), c.y - r * 1.2, c.x + r * (.1 + i * .3), c.y - r * 1.15); ctx.stroke(); }
+    } else {
+      ctx.beginPath(); ctx.ellipse(c.x, c.y - r * .48, r * .96, r * .62, 0, Math.PI, 0); ctx.fill();
+    }
+    if (ch.beard) {
+      ctx.fillStyle = 'rgba(18,12,9,.88)';
+      ctx.beginPath(); ctx.moveTo(c.x - r * .86, c.y + r * .12);
+      ctx.quadraticCurveTo(c.x - r * .8, c.y + r * 1.05, c.x, c.y + r * 1.12);
+      ctx.quadraticCurveTo(c.x + r * .8, c.y + r * 1.05, c.x + r * .86, c.y + r * .12);
+      ctx.lineTo(c.x + r * .62, c.y + r * .5); ctx.quadraticCurveTo(c.x, c.y + r * .9, c.x - r * .62, c.y + r * .5); ctx.closePath(); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(c.x - r * .38, c.y + r * .58); ctx.quadraticCurveTo(c.x, c.y + r * .45, c.x + r * .38, c.y + r * .58);
+      ctx.quadraticCurveTo(c.x, c.y + r * .52, c.x - r * .38, c.y + r * .58); ctx.fill();
+    }
+    if (ch.stache) {
+      ctx.fillStyle = tint(ch.hairCol, -.1);
+      ctx.beginPath(); ctx.moveTo(c.x - r * .46, c.y + r * .66); ctx.quadraticCurveTo(c.x, c.y + r * .38, c.x + r * .46, c.y + r * .66);
+      ctx.quadraticCurveTo(c.x, c.y + r * .54, c.x - r * .46, c.y + r * .66); ctx.fill();
+    }
+  }
+
+  // =========================================================
+  // POSES (front view, inches; y = height above floor)
+  // =========================================================
+  function standing(shY, hipY, kneeY, kneeX, feetX, shW, ox = 0) {
+    return {
+      sh: [{ x: ox - shW, y: shY }, { x: ox + shW, y: shY }],
+      hip: [{ x: ox - 4.6, y: hipY }, { x: ox + 4.6, y: hipY }],
+      kn: [{ x: ox - kneeX, y: kneeY }, { x: ox + kneeX, y: kneeY }],
+      ft: [{ x: ox - feetX, y: 2.4 }, { x: ox + feetX, y: 2.4 }],
+      head: { x: ox, y: shY + 8.5 },
+    };
+  }
+  const mid = (a, b) => ({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
+
+  // empty bar rests on the floor; once plates are going on it sits at plate height
+  function floorBarY() {
+    if (!G || G.plates > 0) return PLATE.R;
+    const low = BAR.sleeveR + .2;
+    if (G.phase === 'load' && G.load) return lerp(low, PLATE.R, smooth(clamp((G.t - LOAD_T.walkL) / (LOAD_T.slideL - LOAD_T.walkL), 0, 1)));
+    return low;
+  }
+  function pose(exId, p, m) {
+    const shW = 8.4 + 2.6 * (m - 1);
+    const e = ease(clamp(p, 0, 1));
+    let J, barY, grip, layer = 'front';
+    if (exId === 'dead') {
+      barY = lerp(floorBarY(), 31.5, e);
+      const shY = barY + 24;
+      J = standing(shY, lerp(26, 36, e), lerp(16, 18.5, e), lerp(10, 6.2, e), 7.5, shW);
+      J.head.y = shY + lerp(6.5, 8.5, e);
+      grip = shW + 5.5 + 1.5 * m;
+      J.ha = [{ x: -grip, y: barY }, { x: grip, y: barY }];
+      J.sh[0].x -= 2; J.sh[1].x += 2;
+      J.el = [mid(J.sh[0], J.ha[0]), mid(J.sh[1], J.ha[1])];
+    } else if (exId === 'squat') {
+      const shY = lerp(41, 56, e);
+      J = standing(shY, lerp(20, 36, e), lerp(16.5, 18.5, e), lerp(13.5, 6.5, e), 10, shW);
+      barY = shY + 1.5; grip = shW + 5;
+      J.ha = [{ x: -grip, y: barY }, { x: grip, y: barY }];
+      J.el = [{ x: -grip + .5, y: shY - 7 }, { x: grip - .5, y: shY - 7 }];
+      layer = 'mid';
+    } else if (exId === 'bench') {
+      J = {
+        sh: [{ x: -shW, y: 21 }, { x: shW, y: 21 }],
+        hip: [{ x: -5, y: 14.5 }, { x: 5, y: 14.5 }],
+        kn: [{ x: -13, y: 12 }, { x: 13, y: 12 }],
+        ft: [{ x: -18, y: 2.4 }, { x: 18, y: 2.4 }],
+        head: { x: 0, y: 28.5 },
+      };
+      grip = shW + 7.5;
+      barY = lerp(25, 46, e);
+      J.ha = [{ x: -grip, y: barY }, { x: grip, y: barY }];
+      const b = 1 - e;
+      J.el = [
+        { x: mid(J.sh[0], J.ha[0]).x - 7 * b, y: mid(J.sh[0], J.ha[0]).y - 4 * b },
+        { x: mid(J.sh[1], J.ha[1]).x + 7 * b, y: mid(J.sh[1], J.ha[1]).y - 4 * b },
+      ];
+      layer = 'bench';
+    } else if (exId === 'ohp') {
+      J = standing(56, 36, 18.5, 6.4, 8, shW);
+      grip = shW + 3;
+      barY = lerp(58, 80.5, e);
+      J.ha = [{ x: -grip, y: barY }, { x: grip, y: barY }];
+      const b = 1 - e;
+      J.el = [
+        { x: mid(J.sh[0], J.ha[0]).x - 2 * b, y: mid(J.sh[0], J.ha[0]).y - 9 * b },
+        { x: mid(J.sh[1], J.ha[1]).x + 2 * b, y: mid(J.sh[1], J.ha[1]).y - 9 * b },
+      ];
+    } else {
+      J = standing(56, 36, 18.5, 6.4, 8, shW);
+      grip = shW + .5;
+      barY = lerp(32, 54, e);
+      J.el = [{ x: -(shW + 1.2), y: 44 }, { x: shW + 1.2, y: 44 }];
+      J.ha = [{ x: -grip + e * 1.5, y: barY }, { x: grip - e * 1.5, y: barY }];
+    }
+    return { J, barY, grip, layer };
+  }
+
+  function flexPose(m) {
+    const shW = 8.4 + 2.6 * (m - 1);
+    const J = standing(56, 36, 18.5, 7, 9, shW);
+    J.el = [{ x: -(shW + 8), y: 57 }, { x: shW + 8, y: 57 }];
+    J.ha = [{ x: -(shW + 6), y: 68 }, { x: shW + 6, y: 68 }];
+    return J;
+  }
+
+  // =========================================================
+  // BARBELL + PLATES (real proportions; plates never shrink)
+  // =========================================================
+  function drawPlate(x, y, ang, side, sc = 1, tk = PLATE.T, color = null) {
+    if (color) return drawCompPlate(x, y, ang, side, sc, tk, color);
+    const R = PLATE.R * u * sc, t = tk * u, rx = R * 0.2;
+    ctx.save(); ctx.translate(x, y); ctx.rotate(ang);
+    const fx = side * t / 2;
+    ctx.fillStyle = '#060606';
+    ctx.beginPath(); ctx.ellipse(-fx, 0, rx, R, 0, 0, 7); ctx.fill();
+    const g = ctx.createLinearGradient(0, -R, 0, R);
+    g.addColorStop(0, '#8a6a4c'); g.addColorStop(.06, '#2a2622'); g.addColorStop(.5, '#121110'); g.addColorStop(1, '#050505');
+    ctx.fillStyle = g; ctx.fillRect(-t / 2, -R, t, 2 * R);
+    const fg = ctx.createLinearGradient(0, -R, 0, R);
+    fg.addColorStop(0, '#2e2925'); fg.addColorStop(.4, '#161412'); fg.addColorStop(1, '#070707');
+    ctx.fillStyle = fg;
+    ctx.beginPath(); ctx.ellipse(fx, 0, rx, R, 0, 0, 7); ctx.fill();
+    ctx.fillStyle = '#0c0b0a';
+    ctx.beginPath(); ctx.ellipse(fx, 0, rx * .8, R * .8, 0, 0, 7); ctx.fill();
+    ctx.fillStyle = '#1c1a18';
+    ctx.beginPath(); ctx.ellipse(fx, 0, rx * .4, R * .3, 0, 0, 7); ctx.fill();
+    // warm rim light on the top edge, cool on the far side
+    ctx.strokeStyle = 'rgba(255,180,110,.75)'; ctx.lineWidth = Math.max(1, u * .35);
+    ctx.beginPath(); ctx.ellipse(fx, 0, rx, R, 0, Math.PI * 1.25, Math.PI * 1.75); ctx.stroke();
+    ctx.strokeStyle = 'rgba(130,170,255,.25)';
+    ctx.beginPath(); ctx.ellipse(fx, 0, rx, R, 0, Math.PI * .6, Math.PI * .95); ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawCompPlate(x, y, ang, side, sc, tk, color) {
+    const R = PLATE.R * u * sc, t = tk * u * 1.25, rx = R * 0.2;
+    ctx.save(); ctx.translate(x, y); ctx.rotate(ang);
+    const fx = side * t / 2;
+    ctx.fillStyle = tint(color, -.55); ctx.beginPath(); ctx.ellipse(-fx, 0, rx, R, 0, 0, 7); ctx.fill();
+    const g = ctx.createLinearGradient(0, -R, 0, R);
+    g.addColorStop(0, tint(color, .35)); g.addColorStop(.12, color); g.addColorStop(.6, tint(color, -.25)); g.addColorStop(1, tint(color, -.6));
+    ctx.fillStyle = g; ctx.fillRect(-t / 2, -R, t, 2 * R);
+    const fg = ctx.createLinearGradient(0, -R, 0, R);
+    fg.addColorStop(0, tint(color, .2)); fg.addColorStop(.5, color); fg.addColorStop(1, tint(color, -.45));
+    ctx.fillStyle = fg; ctx.beginPath(); ctx.ellipse(fx, 0, rx, R, 0, 0, 7); ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,.55)'; ctx.lineWidth = Math.max(1, u * .25);
+    ctx.beginPath(); ctx.ellipse(fx, 0, rx * .82, R * .82, 0, 0, 7); ctx.stroke();
+    ctx.fillStyle = '#d6dade'; ctx.beginPath(); ctx.ellipse(fx, 0, rx * .35, R * .2, 0, 0, 7); ctx.fill();
+    ctx.restore();
+  }
+  function plateX(i) { return BAR.collar + 0.5 + PLATE.T / 2 + i * (PLATE.T + 0.08); }
+
+  // bend: 0..1 — only happens when the player stops tapping
+  function drawBarbell(barY, bend, grip, nPlates, extra) {
+    const sagMax = 13 * bend;
+    const sagAt = x => { const a = Math.abs(x); return a <= grip ? 0 : sagMax * Math.pow((a - grip) / (BAR.half - grip), 2); };
+    const yAt = x => barY - sagAt(x);
+    const angAt = x => Math.atan2(Y(yAt(x + .5)) - Y(yAt(x - .5)), u);
+    const line = (x0, x1) => { ctx.beginPath(); for (let x = x0; x <= x1 + .01; x += 1) { const sx = X(x), sy = Y(yAt(x)); x === x0 ? ctx.moveTo(sx, sy) : ctx.lineTo(sx, sy); } ctx.stroke(); };
+    ctx.lineCap = 'butt';
+    const B = curBar();
+    // shaft (finish depends on which bar you've unlocked)
+    let shaftPaint = B.shaft;
+    if (B.rainbow) { const g = ctx.createLinearGradient(X(-BAR.collar), 0, X(BAR.collar), 0); ['#d4af37', '#c0398a', '#5b3fd0', '#1f8fd6', '#5b3fd0', '#c0398a', '#d4af37'].forEach((c2, i) => g.addColorStop(i / 6, c2)); shaftPaint = g; }
+    ctx.strokeStyle = shaftPaint; ctx.lineWidth = BAR.shaftR * 2 * u; line(-BAR.collar, BAR.collar);
+    ctx.strokeStyle = B.hi; ctx.globalAlpha = .75; ctx.lineWidth = Math.max(1, BAR.shaftR * .45 * u);
+    ctx.save(); ctx.translate(0, -BAR.shaftR * .5 * u); line(-BAR.collar, BAR.collar); ctx.restore();
+    ctx.globalAlpha = 1;
+    ctx.strokeStyle = 'rgba(0,0,0,.45)'; ctx.lineWidth = BAR.shaftR * 1.2 * u; ctx.setLineDash([1, 1.5]);
+    line(-BAR.collar + 4, -3); line(3, BAR.collar - 4); ctx.setLineDash([]);
+    for (const s of [-1, 1]) {
+      ctx.strokeStyle = B.sleeve; ctx.lineWidth = BAR.sleeveR * 2 * u;
+      s < 0 ? line(-BAR.half, -BAR.collar) : line(BAR.collar, BAR.half);
+      ctx.strokeStyle = 'rgba(0,0,0,.28)'; ctx.lineWidth = Math.max(1, BAR.sleeveR * .6 * u);
+      ctx.save(); ctx.translate(0, BAR.sleeveR * .55 * u); s < 0 ? line(-BAR.half, -BAR.collar) : line(BAR.collar, BAR.half); ctx.restore();
+      ctx.strokeStyle = B.sHi; ctx.lineWidth = Math.max(1, BAR.sleeveR * .4 * u);
+      ctx.save(); ctx.translate(0, -BAR.sleeveR * .6 * u);
+      s < 0 ? line(-BAR.half, -BAR.collar) : line(BAR.collar, BAR.half); ctx.restore();
+      const cx = s * BAR.collar;
+      ctx.save(); ctx.translate(X(cx), Y(yAt(cx))); ctx.rotate(angAt(cx));
+      ctx.fillStyle = B.flange; ctx.beginPath(); ctx.ellipse(0, 0, .45 * u, 1.75 * u, 0, 0, 7); ctx.fill();
+      ctx.restore();
+    }
+    for (const s of [-1, 1]) {
+      for (let i = 0; i < nPlates; i++) {
+        const px = s * plateX(i);
+        let py = yAt(px); if (py < PLATE.R) py = PLATE.R;
+        drawPlate(X(px), Y(py), angAt(px), s, 1, PLATE.T, B.comp ? COMP_PLATES[i % 4] : null);
+      }
+      const ext = extra && (s < 0 ? extra.L : extra.R);
+      if (ext) {
+        const px = s * ext; let py = yAt(Math.min(BAR.half, ext) * s); if (py < PLATE.R) py = PLATE.R;
+        drawPlate(X(px), Y(py), 0, s, 1, PLATE.T, B.comp ? COMP_PLATES[nPlates % 4] : null);
+      }
+      if (nPlates > 0) {
+        const ox = s * (plateX(nPlates - 1) + PLATE.T / 2 + .7);
+        ctx.save(); ctx.translate(X(ox), Y(yAt(ox))); ctx.rotate(angAt(ox));
+        ctx.fillStyle = B.collar; rrect(-.6 * u, -1.6 * u, 1.2 * u, 3.2 * u, .3 * u); ctx.fill();
+        ctx.restore();
+      }
+      const ex = s * BAR.half;
+      ctx.save(); ctx.translate(X(ex), Y(yAt(ex))); ctx.rotate(angAt(ex));
+      ctx.fillStyle = B.cap; ctx.beginPath(); ctx.ellipse(0, 0, .3 * u, BAR.sleeveR * u, 0, 0, 7); ctx.fill();
+      ctx.restore();
+    }
+    if (B.sparkle) {               // glints running along fancy bars
+      const tt = performance.now() / 1000;
+      for (let k = 0; k < 4; k++) {
+        const x = ((tt * 18 + k * 22) % (BAR.half * 2)) - BAR.half, a = Math.max(0, Math.sin(tt * 4 + k * 1.7));
+        ctx.fillStyle = `rgba(255,255,255,${a * .9})`;
+        ctx.beginPath(); ctx.arc(X(x), Y(yAt(x)) - BAR.shaftR * .4 * u, Math.max(1, .5 * u * a), 0, 7); ctx.fill();
+      }
+    }
+  }
+
+  // =========================================================
+  // EQUIPMENT
+  // =========================================================
+  function drawRack(hookY) {
+    for (const s of [-1, 1]) {
+      const x = s * 30;
+      { const g = ctx.createLinearGradient(X(x) - 1.5 * u, 0, X(x) + 1.5 * u, 0); g.addColorStop(0, '#1a1c1e'); g.addColorStop(.4, '#4a4e52'); g.addColorStop(1, '#202224'); ctx.fillStyle = g; } ctx.fillRect(X(x) - 1.5 * u, Y(90), 3 * u, 90 * u);
+      ctx.fillStyle = 'rgba(255,180,110,.25)'; ctx.fillRect(X(x) + (s < 0 ? 1.5 * u - 1 : -1.5 * u), Y(90), 1, 90 * u);
+      ctx.fillStyle = '#050505';
+      for (let y = 10; y < 88; y += 3) { ctx.beginPath(); ctx.arc(X(x), Y(y), .4 * u, 0, 7); ctx.fill(); }
+      ctx.fillStyle = '#2a2c2e';
+      ctx.fillRect(X(x) - (s > 0 ? 3.2 * u : -1.5 * u), Y(hookY + 1), 1.7 * u, 2.4 * u);
+      ctx.fillStyle = '#1a1b1c'; ctx.fillRect(X(x) - (s > 0 ? 6 * u : -1.5 * u), Y(hookY - 22), 4.5 * u, 1.4 * u);
+    }
+    ctx.fillStyle = '#0e0f10'; ctx.fillRect(X(-32), Y(90), 64 * u, 2 * u);
+    ctx.fillRect(X(-34), Y(1.5), 68 * u, 1.5 * u);
+  }
+  function drawBench() {
+    ctx.fillStyle = '#0c0c0c'; ctx.fillRect(X(-10), Y(1.6), 20 * u, 1.6 * u);
+    ctx.fillStyle = '#18191a'; ctx.fillRect(X(-1.5), Y(14), 3 * u, 12.5 * u);
+    { const g = ctx.createLinearGradient(0, Y(17.6), 0, Y(13.8)); g.addColorStop(0, '#9a2c22'); g.addColorStop(.4, '#6a1a14'); g.addColorStop(1, '#3a0e0a'); ctx.fillStyle = g; } rrect(X(-6), Y(17.6), 12 * u, 3.8 * u, 1.2 * u); ctx.fill();
+    ctx.fillStyle = 'rgba(255,180,110,.35)'; ctx.fillRect(X(-5.5), Y(17.6), 11 * u, 1);
+  }
+
+  // =========================================================
+  // LOADING SEQUENCE — he racks it, gets up, loads each side, gets back under it
+  // =========================================================
+  const LOAD_T = (() => {
+    const seg = [['rack', .45], ['up', .5], ['walkL', .6], ['grabL', .35], ['slideL', .55], ['releaseL', .3], ['walkR', .9], ['grabR', .35], ['slideR', .55], ['releaseR', .3], ['back', .6], ['down', .5], ['unrack', .35]];
+    const o = { seg: [] }; let t = 0;
+    for (const [k, d] of seg) { o.seg.push([k, t, t + d]); t += d; o[k] = t; }
+    return o;
+  })();
+  const smooth = t => -(Math.cos(Math.PI * clamp(t, 0, 1)) - 1) / 2;   // ease-in-out sine
+
+  function lerpJ(A, B, t) {
+    const o = { head: { x: lerp(A.head.x, B.head.x, t), y: lerp(A.head.y, B.head.y, t) } };
+    for (const k of ['sh', 'hip', 'kn', 'ft', 'el', 'ha']) o[k] = [0, 1].map(i => ({ x: lerp(A[k][i].x, B[k][i].x, t), y: lerp(A[k][i].y, B[k][i].y, t) }));
+    return o;
+  }
+
+  // Standing/crouching body. stride: leg swing (-1..1). reach: {x, y, side} hands on a plate, or null = arms relaxed.
+  // The lower the hands need to go, the more he squats down, so nothing ever stretches.
+  function bodyJ(ox, m, stride, reach) {
+    const shW = 8.4 + 2.6 * (m - 1);
+    const handY = reach ? reach.y : 33;
+    const shY = clamp(handY + 21, 32, 56) + Math.abs(stride) * .4;
+    const k = clamp((shY - 32) / 24, 0, 1);              // 1 = standing tall, 0 = deep squat
+    const J = standing(shY, lerp(25, 36, k), lerp(16, 18.5, k), lerp(10, 6.4, k), 7.5, shW, ox);
+    J.ft[0].x = ox - 7 + stride * 3.5; J.ft[1].x = ox + 7 - stride * 3.5;
+    J.kn[0].x += stride * 1.8; J.kn[1].x -= stride * 1.8;
+    J.head.y = shY + lerp(7, 8.5, k);
+    if (reach) {
+      const s = reach.side;                               // which side of him the plate is on
+      const near = s < 0 ? 0 : 1, far = 1 - near;
+      J.ha = []; J.el = [];
+      J.ha[near] = { x: reach.x - s * .5, y: reach.y + 5 };
+      J.ha[far] = { x: reach.x - s * 2.5, y: reach.y - 3 };
+      for (const i of [0, 1]) { const m2 = mid(J.sh[i], J.ha[i]); J.el[i] = { x: m2.x + (i ? 2 : -2), y: m2.y - 2 }; }
+    } else {
+      J.ha = [{ x: ox - shW - 2.5, y: 33 }, { x: ox + shW + 2.5, y: 33 }];
+      J.el = [mid(J.sh[0], J.ha[0]), mid(J.sh[1], J.ha[1])];
+      J.el[0].x -= 1.5; J.el[1].x += 1.5;
+    }
+    return J;
+  }
+
+  // where the bar sits while he steps away: on the hooks, or on the floor
+  function restPose(m) {
+    const ex = G.ex;
+    return ex.hooks ? pose(ex.id, ex.restP, m) : pose('dead', 0, m);
+  }
+
+  const treeX = () => Math.min(50, W / u / 2 - 4);      // plate trees at both edges
+  const TREE_PIN = 30;                                   // height of the plate he grabs
+
+  function drawPlateTrees() {
+    const tx = treeX();
+    for (const s of [-1, 1]) {
+      const x = s * tx;
+      ctx.fillStyle = '#0d0e0f'; ctx.fillRect(X(x - 1.2), Y(46), 2.4 * u, 46 * u);
+      ctx.fillRect(X(x - 7), Y(1.5), 14 * u, 1.5 * u);
+      ctx.fillStyle = 'rgba(255,180,110,.25)'; ctx.fillRect(X(x - 1.2), Y(46), 2.4 * u, 1);
+      // spare plates hanging on the pins
+      for (const [py, n] of [[12, 3], [TREE_PIN, 2]]) {
+        for (let i = n - 1; i >= 0; i--) drawPlate(X(x - s * (2.2 + i * 2.1)), Y(py), 0, -s);
+      }
+    }
+  }
+
+  function loadState(t, m) {
+    const ex = G.ex, T = LOAD_T;
+    const start = pose(ex.id, G.from, m), rest = restPose(m), back = pose(ex.id, ex.restP, m);
+    const tx = treeX(), standX = tx - 9, slot = plateX(G.plates);
+    let k = 'unrack', lin = 1;
+    for (const [name, a, b] of T.seg) if (t < b) { k = name; lin = clamp((t - a) / (b - a), 0, 1); break; }
+    const e = smooth(lin);
+    // legs swing with distance travelled, fading to still at both ends of each walk
+    const stride = (ox) => Math.sin(ox * .32) * Math.sin(Math.PI * lin);
+    const plateOn = { x: tx - 4.3, y: TREE_PIN };          // the plate he takes from the tree
+    const out = { barY: rest.barY, grip: rest.grip, layer: rest.layer, holding: false, carry: null, extra: { L: null, R: null } };
+    if (t >= T.slideL) out.extra.L = slot;
+    const stand0 = bodyJ(0, m, 0, null);
+
+    const grabPose = (s) => {
+      const target = { x: s * plateOn.x, y: plateOn.y, side: s };
+      const relaxed = bodyJ(s * standX, m, 0, null), reaching = bodyJ(s * standX, m, 0, target);
+      return lerpJ(relaxed, reaching, e);
+    };
+    const slidePose = (s) => {
+      // plate travels from the tree straight onto its slot on the sleeve
+      const px = s * lerp(plateOn.x, slot, e), py = lerp(plateOn.y, rest.barY, e);
+      out.carry = { x: px, y: py, side: s };
+      return bodyJ(s * lerp(standX, Math.max(slot - 4, standX - 6), e), m, 0, { x: px, y: py, side: s });
+    };
+
+    switch (k) {
+      case 'rack':
+        out.holding = true; out.layer = start.layer;
+        out.J = lerpJ(start.J, rest.J, e); out.barY = lerp(start.barY, rest.barY, e); out.grip = lerp(start.grip, rest.grip, e); break;
+      case 'up': out.J = lerpJ(rest.J, stand0, e); break;
+      case 'walkL': { const ox = lerp(0, -standX, e); out.J = bodyJ(ox, m, stride(ox), null); break; }
+      case 'grabL': out.J = grabPose(-1); if (lin > .6) out.carry = { x: -plateOn.x, y: plateOn.y, side: -1 }; break;
+      case 'slideL': out.J = slidePose(-1); break;
+      case 'releaseL': case 'releaseR': {
+        const s = k === 'releaseL' ? -1 : 1, ox = s * Math.max(slot - 4, standX - 6);
+        const held = bodyJ(ox, m, 0, { x: s * slot, y: rest.barY, side: s });
+        out.J = lerpJ(held, bodyJ(ox, m, 0, null), e); break;
+      }
+      case 'walkR': {
+        const from = -Math.max(slot - 4, standX - 6), ox = lerp(from, standX, e);
+        out.J = bodyJ(ox, m, stride(ox), null); break;
+      }
+      case 'grabR': out.J = grabPose(1); if (lin > .6) out.carry = { x: plateOn.x, y: plateOn.y, side: 1 }; break;
+      case 'slideR': out.J = slidePose(1); break;
+      case 'back': {
+        const ox = lerp(Math.max(slot - 4, standX - 6), 0, e);
+        out.J = bodyJ(ox, m, stride(ox), null); break;
+      }
+      case 'down': out.J = lerpJ(stand0, rest.J, e); break;
+      default:
+        out.holding = true; out.layer = back.layer;
+        out.J = lerpJ(rest.J, back.J, e); out.barY = lerp(rest.barY, back.barY, e); out.grip = lerp(rest.grip, back.grip, e);
+    }
+    if (t >= T.slideR) out.extra = null;     // both plates are now part of G.plates
+    return out;
+  }
+
+  // =========================================================
+  // SPOTTER — rushes in behind you when you stop tapping
+  // =========================================================
+  function drawSpotter(barY, grip) {
+    const sp = ease(G.spot); if (sp <= 0.01) return;
+    const ox = lerp(W / u / 2 + 14, 9, sp);
+    const shY = clamp(barY + 22, 34, 56), hipY = Math.min(36, shY - 12);
+    const J = standing(shY, hipY, Math.min(18.5, hipY - 12), lerp(6.5, 11, (56 - shY) / 22), 9, 8.8, ox);
+    J.head.y = shY + 8;
+    if (sp > .8) {
+      const hx = Math.max(6, grip - 6);
+      J.ha = [{ x: -hx + 4, y: barY - 1 }, { x: hx + 2, y: barY - 1 }];
+      J.el = [mid(J.sh[0], J.ha[0]), mid(J.sh[1], J.ha[1])];
+      J.el[0].x -= 3; J.el[1].x += 3;
+    } else {
+      J.ha = [{ x: ox - 11, y: shY - 18 }, { x: ox + 11, y: shY - 18 }];
+      J.el = [mid(J.sh[0], J.ha[0]), mid(J.sh[1], J.ha[1])];
+    }
+    const ch = SPOTTERS[0];
+    { const hp = P(J.head); anchors.spotter = { x: hp.x, y: hp.y - 5 * u }; }
+    lit(() => { drawLower(J, ch, .9); drawTorso(J, ch, .9); drawArms(J, ch, .9); drawHead(J, ch); }, { alpha: .97 });
+  }
+
+  // =========================================================
+  // MAIN DRAW
+  // =========================================================
+  function drawScene() {
+    const ex = G.ex, ch = CHARS[charIdx], m = G.m;
+    const L = { rim: ch.rim };
+    let st;
+    if (G.phase === 'load' && G.load) st = loadState(G.t, m);
+    else { const p = pose(ex.id, G.progress, m); st = { ...p, holding: true, extra: null }; }
+    const { J, barY, grip } = st;
+    { const hp = P(J.head); anchors.lifter = { x: hp.x, y: hp.y - 5 * u }; }
+
+    if (ex.hooks) drawRack(pose(ex.id, ex.restP, m).barY - 1.2);
+    {
+      const fx = (J.ft[0].x + J.ft[1].x) / 2, sg = ctx.createRadialGradient(X(fx), Y(0), 2, X(fx), Y(0), 26 * u);
+      sg.addColorStop(0, 'rgba(0,0,0,.55)'); sg.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = sg; ctx.beginPath(); ctx.ellipse(X(fx), Y(.5), 26 * u, 4 * u, 0, 0, 7); ctx.fill();
+    }
+    drawPlateTrees();
+    if (G.phase !== 'load') drawSpotter(barY, grip);
+    if (ex.id === 'bench') drawBench();
+
+    const barFn = () => {
+      if (G.phase === 'snap') {
+        const s = G.snap;
+        for (const side of [-1, 1]) {
+          ctx.save();
+          ctx.beginPath(); side < 0 ? ctx.rect(-50, -50, X(0) + 50, H + 100) : ctx.rect(X(0), -50, W, H + 100); ctx.clip();
+          const piv = { x: X(side * grip), y: Y(barY) };
+          ctx.translate(0, clamp(s.fall * .5, 0, Math.max(0, Y(PLATE.R) - piv.y)));
+          ctx.translate(piv.x, piv.y); ctx.rotate(side * Math.min(s.a, .5) * .5); ctx.translate(-piv.x, -piv.y);
+          drawBarbell(barY, 1, grip, G.plates);
+          ctx.restore();
+        }
+        ctx.save(); ctx.globalCompositeOperation = 'lighter';
+        for (let i = 0; i < 14; i++) {
+          const a = i / 14 * Math.PI * 2, d = G.snap.a * 45 * (0.6 + (i % 3) * .2);
+          ctx.fillStyle = `rgba(255,${180 + (i % 3) * 25},90,${1 - G.snap.a / 1.2})`;
+          ctx.fillRect(X(0) + Math.cos(a) * d, Y(barY) + Math.sin(a) * d, 2.5, 2.5);
+        }
+        ctx.restore();
+        return;
+      }
+      drawBarbell(barY, G.bend, grip, G.plates, st.extra);
+    };
+
+    if (!st.holding) {
+      // he's off the bar: walking around in front of it
+      barFn();
+      lit(() => { drawLower(J, ch, m); drawTorso(J, ch, m); drawHead(J, ch); }, L);
+      if (st.carry) drawPlate(X(st.carry.x), Y(Math.max(PLATE.R, st.carry.y)), 0, st.carry.side);
+      lit(() => drawArms(J, ch, m), L);
+    } else if (st.layer === 'bench') {
+      lit(() => { drawLower(J, ch, m); drawHead(J, ch); drawTorso(J, ch, m); drawArms(J, ch, m); }, L); barFn();
+    } else if (st.layer === 'mid') {
+      lit(() => { drawLower(J, ch, m); drawTorso(J, ch, m); }, L); barFn(); lit(() => { drawArms(J, ch, m); drawHead(J, ch); }, L);
+    } else {
+      lit(() => { drawLower(J, ch, m); drawTorso(J, ch, m); drawArms(J, ch, m); drawHead(J, ch); }, L); barFn();
+    }
+  }
+
+  let lastDraw = performance.now();
+  function draw() {
+    const t = performance.now(), dt = Math.min(.05, (t - lastDraw) / 1000); lastDraw = t;
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    ctx.clearRect(0, 0, W, H);
+    ctx.drawImage(bgCanvas, 0, 0, W, H);
+    if (!G) return;
+
+    // weight, faint on the back wall
+    ctx.fillStyle = 'rgba(255,200,150,.035)';
+    ctx.font = `700 ${Math.min(W * .42, H * .32)}px Oswald, sans-serif`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(weight(), W / 2, Y(56));
+
+    const sh = G.shake;
+    ctx.save(); ctx.translate((Math.random() - .5) * sh, (Math.random() - .5) * sh);
+    drawScene();
+    ctx.restore();
+
+    drawMotes(dt);
+    if (isComp()) drawMeetFX(dt); else delete anchors.crowd;
+    if (G.spot < .02 && G.phase !== 'spotted') delete anchors.spotter;
+    drawBubbles(ctx, W, H);
+
+    ctx.textAlign = 'center';
+    for (const p of G.pops) {
+      ctx.fillStyle = `rgba(255,138,61,${clamp(p.life, 0, 1)})`;
+      ctx.font = `700 ${26 + (1 - p.life) * 8}px Oswald, sans-serif`;
+      ctx.fillText(p.text, W * .84, Y(64) - p.y);
+    }
+    if (G.spot > .02 && (G.phase === 'push' || G.phase === 'rep')) {
+      const g = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * .3, W / 2, H / 2, Math.max(W, H) * .75);
+      g.addColorStop(0, 'rgba(224,64,42,0)'); g.addColorStop(1, `rgba(224,64,42,${G.spot * .4})`);
+      ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    }
+    if (G.fade > 0) { ctx.fillStyle = `rgba(0,0,0,${G.fade})`; ctx.fillRect(0, 0, W, H); }
+  }
+
+  // =========================================================
+  // CHARACTER PREVIEWS (menu)
+  // =========================================================
+  function renderPreviews() {
+    const wrap = $('chars'); wrap.innerHTML = '';
+    CHARS.forEach((ch, i) => {
+      const btn = document.createElement('button');
+      btn.className = 'charBtn' + (i === charIdx ? ' sel' : '');
+      const cv = document.createElement('canvas');
+      btn.appendChild(cv);
+      btn.insertAdjacentHTML('beforeend', `<div class="n">${ch.name}</div><div class="d">${ch.tag}</div>`);
+      btn.addEventListener('click', () => { charIdx = i; renderPreviews(); });
+      wrap.appendChild(btn);
+      requestAnimationFrame(() => {
+        const r = cv.getBoundingClientRect(); if (!r.width) return;
+        const d = Math.min(devicePixelRatio || 1, 2);
+        cv.width = r.width * d; cv.height = r.height * d;
+        const saved = { ctx, u, floorY, cxS };
+        ctx = cv.getContext('2d'); ctx.setTransform(d, 0, 0, d, 0, 0);
+        u = r.height / 86; floorY = r.height + 18 * u; cxS = r.width / 2;
+        ctx.fillStyle = '#070605'; ctx.fillRect(0, 0, r.width, r.height);
+        const g = ctx.createRadialGradient(cxS, 0, 2, cxS, r.height * .3, r.width);
+        g.addColorStop(0, 'rgba(255,190,130,.35)'); g.addColorStop(1, 'rgba(255,190,130,0)');
+        ctx.fillStyle = g; ctx.fillRect(0, 0, r.width, r.height);
+        const m = ch.m0 + .3, J = flexPose(m);
+        lit(() => { drawLower(J, ch, m); drawTorso(J, ch, m); drawArms(J, ch, m); drawHead(J, ch); }, { rim: ch.rim, glow: 8, dpr: d });
+        ({ ctx, u, floorY, cxS } = saved);
+      });
+    });
+  }
+  function refreshBest() {
+    const ex = EXERCISES[exIdx], b = load('irontap_best_' + ex.id);
+    $('bestLbl').textContent = b ? `${ex.name.toUpperCase()} BEST · ${b.reps} reps · ${b.weight} lb · level ${b.level}` : '';
+  }
+  function renderWorkouts() {
+    const wrap = $('workouts'); wrap.innerHTML = '';
+    EXERCISES.forEach((ex, i) => {
+      const btn = document.createElement('button');
+      btn.className = 'wBtn' + (i === exIdx ? ' sel' : '');
+      const top = BAR_LB + MAX_PLATES * 2 * PLATE_LB, start = BAR_LB + ex.start * 2 * PLATE_LB;
+      btn.innerHTML = `${ex.name}<small>${start} → ${top} lb</small>`;
+      btn.addEventListener('click', () => { exIdx = i; renderWorkouts(); refreshBest(); });
+      wrap.appendChild(btn);
+    });
+  }
+
+  // =========================================================
+  // PR SPARKS
+  // =========================================================
+  let confetti = [];
+  function confettiBurst() {
+    for (let i = 0; i < 140; i++) confetti.push({
+      x: innerWidth / 2, y: innerHeight * .3,
+      vx: (Math.random() - .5) * 800, vy: -Math.random() * 800 - 150,
+      c: Math.random() < .7 ? '#ff8a3d' : '#ffe2b8', life: 1.6 + Math.random(), s: 1.5 + Math.random() * 2,
+    });
+  }
+  function drawConfetti(dt) {
+    const cf = $('confetti'), c = cf.getContext('2d');
+    c.setTransform(DPR, 0, 0, DPR, 0, 0);
+    c.clearRect(0, 0, innerWidth, innerHeight);
+    confetti = confetti.filter(k => (k.life -= dt) > 0);
+    c.globalCompositeOperation = 'lighter';
+    for (const k of confetti) {
+      k.vy += 900 * dt; k.vx *= .985; k.x += k.vx * dt; k.y += k.vy * dt;
+      c.globalAlpha = Math.min(1, k.life); c.fillStyle = k.c;
+      c.shadowColor = k.c; c.shadowBlur = 8;
+      c.beginPath(); c.arc(k.x, k.y, k.s, 0, 7); c.fill();
+    }
+    c.shadowBlur = 0; c.globalAlpha = 1; c.globalCompositeOperation = 'source-over';
+  }
+
+  // =========================================================
+  // GYM BRO SPEECH BUBBLES
+  // =========================================================
+  const bubbles = {}, anchors = {};
+  const pick = a => a[Math.random() * a.length | 0];
+  // A line that's being spoken is never cut off. New lines wait in a short queue;
+  // the bubble appears when its line actually starts and stays until the voice finishes.
+  const lineQ = [];
+  let talking = null;              // { who, u, until }
+  const keepAlive = [];            // Chrome drops speech mid-sentence if the utterance gets garbage-collected
+  function prio(who, text) {
+    if (text.includes('=') || /PR|Gotcha|Re-rack|got you|barely|Back to|spotter PR/i.test(text)) return 2;
+    if (who !== 'lifter' || BRO.stumble.includes(text) || BRO.crash.includes(text)) return 1;
+    return 0;
+  }
+  function say(who, text, ms = 2600) {
+    if (!voiceOn()) { bubbles[who] = { text, t: 0, ms: ms / 1000 }; SFX.babble(who); return; }
+    const item = { who, text, ms, p: prio(who, text), at: performance.now() };
+    if (!talking) { startLine(item); return; }
+    // only small talk gets skipped when busy; important lines bump queued small talk
+    if (item.p === 0) { if (lineQ.length) return; lineQ.push(item); return; }
+    for (let i = lineQ.length - 1; i >= 0; i--) if (lineQ[i].p < item.p) lineQ.splice(i, 1);
+    lineQ.push(item);
+    if (lineQ.length > 2) lineQ.splice(0, lineQ.length - 2);
+  }
+  function startLine(item) {
+    const est = 900 + item.text.length * 80;          // fallback in case the browser never reports the end
+    bubbles[item.who] = { text: item.text, t: 0, ms: 999, live: true };
+    const u = makeUtterance(item.who, item.text);
+    talking = { who: item.who, u, until: performance.now() + est + 2500 };
+    const done = () => {
+      if (!talking || talking.u !== u) return;
+      const b = bubbles[item.who]; if (b && b.live) { b.live = false; b.ms = b.t + .6; }
+      talking = null; keepAlive.splice(keepAlive.indexOf(u), 1);
+      setTimeout(nextLine, 120);
+    };
+    u.onend = done; u.onerror = done;
+    keepAlive.push(u);
+    try { TTS.speak(u); } catch { done(); }
+  }
+  function nextLine() {
+    if (talking) return;
+    while (lineQ.length) {
+      const it = lineQ.shift();
+      if (it.p === 0 && performance.now() - it.at > 4000) continue;   // stale small talk
+      if (voiceOn()) startLine(it); else { bubbles[it.who] = { text: it.text, t: 0, ms: it.ms / 1000 }; }
+      return;
+    }
+  }
+  setInterval(() => {   // watchdog: some phones never fire 'end'
+    if (talking && performance.now() > talking.until && !(TTS && TTS.speaking)) talking.u.onend();
+  }, 500);
+
+  // ---------- spoken lines (built-in text-to-speech, no files needed)
+  const TTS = window.speechSynthesis;
+  // small pitch/rate nudges only: big shifts are what make TTS sound robotic
+  const VOICE_CFG = {
+    lifter:  { pitch: .94, rate: 1.04, vol: 1 },
+    spotter: { pitch: 1.0, rate: 1.1, vol: 1 },
+    chaser:  { pitch: 1.1, rate: 1.14, vol: 1 },
+  };
+  let voicePick = null;
+  // rank voices: natural / neural / premium / enhanced voices first, novelty + old robotic engines last
+  function voiceScore(v) {
+    const n = v.name;
+    let sc = 0;
+    if (/natural|neural/i.test(n)) sc += 60;
+    if (/premium/i.test(n)) sc += 50;
+    if (/enhanced/i.test(n)) sc += 45;
+    if (/online/i.test(n)) sc += 25;
+    if (/google/i.test(n)) sc += 22;
+    if (/siri/i.test(n)) sc += 30;
+    if (/en[-_]US/i.test(v.lang)) sc += 8;
+    if (/guy|andrew|brian|christopher|eric|roger|steffan|davis|jason|tony|evan|nathan|aaron|tom|alex|daniel|arthur|oliver|male/i.test(n) && !/female/i.test(n)) sc += 10;
+    if (/compact|eloquence|espeak/i.test(n)) sc -= 40;
+    if (/albert|bad news|bahh|bells|boing|bubbles|cellos|jester|organ|superstar|trinoids|whisper|wobble|zarvox|good news|grandma|grandpa|rocko|shelley|flo|reed|sandy|fred|junior|ralph|kathy|princess|deranged|hysterical/i.test(n)) sc -= 80;
+    return sc;
+  }
+  function pickVoices() {
+    if (!TTS) return;
+    const all = TTS.getVoices().filter(v => /^en/i.test(v.lang));
+    if (!all.length) return;
+    const ranked = [...all].sort((x, y) => voiceScore(y) - voiceScore(x));
+    const top = voiceScore(ranked[0]), good = ranked.filter(v => top - voiceScore(v) <= 30);
+    const pool = good.length ? good : ranked;
+    voicePick = { lifter: pool[0], spotter: pool[1 % pool.length], chaser: pool[2 % pool.length] };
+  }
+  if (TTS) { pickVoices(); TTS.addEventListener?.('voiceschanged', pickVoices); }
+  const PLATE_WORDS = { 10: 'tens', 25: 'twenty-fives', 35: 'thirty-fives', 45: 'forty-fives' };
+  function speechText(t) {
+    return t
+      .replace(/\b(10|25|35|45)s\b/g, (_, d) => PLATE_WORDS[d])
+      .replace(/\+/g, ' plus ').replace(/=/g, ' equals ').replace(/×/g, ' times ')
+      .replace(/[()]/g, ' ').replace(/\blb\b/gi, 'pounds').replace(/\bPRs?\b/g, m => m === 'PR' ? 'P.R.' : 'P.R.s')
+      .replace(/\.\.\./g, ', ').replace(/>/g, ' beats ')
+      .replace(/\b([A-Z]{2,})\b/g, w => w.toLowerCase())   // stop it spelling out shouted words
+      .replace(/\s+/g, ' ').trim();
+  }
+  const voiceOn = () => false;   // spoken lines turned off: bubbles are text-only
+  function makeUtterance(who, text) {
+    if (!voicePick) pickVoices();
+    const u = new SpeechSynthesisUtterance(speechText(text)), c = VOICE_CFG[who] || VOICE_CFG.lifter;
+    if (voicePick && voicePick[who]) u.voice = voicePick[who];
+    u.lang = (u.voice && u.voice.lang) || 'en-US';
+    u.pitch = c.pitch; u.rate = c.rate; u.volume = c.vol;
+    return u;
+  }
+  // only used when you mute, pause or leave the tab
+  function shush() {
+    lineQ.length = 0;
+    const t = talking; talking = null;
+    try { TTS && TTS.cancel(); } catch {}
+    if (t) { const b = bubbles[t.who]; if (b) { b.live = false; b.ms = b.t + .3; } }
+  }
+  function clearBubbles() { for (const k in bubbles) if (!bubbles[k].live) delete bubbles[k]; for (const k in anchors) delete anchors[k]; lineQ.length = 0; }
+  function tickBubbles(dt) { for (const k in bubbles) { bubbles[k].t += dt; if (!bubbles[k].live && bubbles[k].t > bubbles[k].ms) delete bubbles[k]; } }
+  function drawBubbles(c, W2, H2) {
+    for (const who in bubbles) {
+      const b = bubbles[who], a = anchors[who]; if (!a) continue;
+      const alpha = b.live ? Math.min(1, b.t * 7) : Math.min(1, b.t * 7, (b.ms - b.t) * 4);
+      const fs = W2 < 420 ? 13 : 15;
+      c.save(); c.globalAlpha = alpha;
+      c.font = `800 ${fs}px Inter, sans-serif`;
+      const maxW = Math.min(240, W2 * .64), words = b.text.split(' '), lines = [];
+      let line = '';
+      for (const wd of words) { const tst = line ? line + ' ' + wd : wd; if (c.measureText(tst).width > maxW - 20 && line) { lines.push(line); line = wd; } else line = tst; }
+      lines.push(line);
+      const lh = fs * 1.28, w = Math.max(...lines.map(l => c.measureText(l).width)) + 22, h = lines.length * lh + 14;
+      const left = who === 'spotter' ? true : a.x > W2 * .55;
+      let bx = left ? a.x - w - 6 : a.x + 6, by = a.y - h - 22;
+      bx = clamp(bx, 8, W2 - w - 8); by = clamp(by, 8, H2 - h - 8);
+      const pop = Math.min(1, .75 + b.t * 4);
+      c.translate(bx + w / 2, by + h); c.scale(pop, pop); c.translate(-(bx + w / 2), -(by + h));
+      c.shadowColor = 'rgba(0,0,0,.45)'; c.shadowBlur = 10; c.shadowOffsetY = 3;
+      c.fillStyle = who === 'spotter' ? '#e4f2ff' : who === 'chaser' ? '#ffe3dd' : who === 'crowd' ? '#fff3c4' : '#ffffff';
+      rrectC(c, bx, by, w, h, 12); c.fill();
+      const tx = clamp(a.x, bx + 16, bx + w - 16);
+      c.beginPath(); c.moveTo(tx - 7, by + h - 1); c.lineTo(tx + 7, by + h - 1); c.lineTo(clamp(a.x, bx, bx + w), Math.min(a.y - 4, by + h + 16)); c.closePath(); c.fill();
+      c.shadowColor = 'transparent';
+      c.fillStyle = '#141414'; c.textAlign = 'left'; c.textBaseline = 'top';
+      lines.forEach((l, i) => c.fillText(l, bx + 11, by + 8 + i * lh));
+      c.restore();
+    }
+  }
+  const BRO = {
+    start: ['Chalk up. Let\'s eat.', 'Is this the warmup? Cute.', 'Pre-workout is KICKING in.', 'Mirror check... yep, still huge.', 'Bro, film this for the gram.'],
+    rep: ['Light weight, baby!', 'Light weight, baby!', 'Lightweight!', 'Do you even lift bro?', 'Never skip leg day.', 'Pump is UNREAL right now.', 'This is my cardio.', 'One more! ...okay, five more.', 'Rest day? Never heard of her.', 'Feeling SWOLE.', 'Protein window is OPEN.', 'Who needs a deload?'],
+    spotter: ['ALL YOU BRO! ALL YOU!', 'It\'s all you, I\'m not even touching it!', 'Push! PUSH! You got this!', 'Two fingers, bro. Two fingers.'],
+    racked: ['I got you, I got you!', 'I barely touched it, that counts.', 'That\'s a spotter PR, bro.'],
+    pr: ['NEW PR! Light weight, baby!', 'NEW PR! Somebody film that!', 'PR CITY BRO!', 'Tell my mom I\'m huge.'],
+    run: ['Leg day? Every day is leg day.', 'Out of my way, I\'ve got gains to catch!', 'Running is just fast squats.', 'Cardio? In THIS economy?'],
+    shake: ['Gotta hit my macros!', 'Protein window: OPEN.', 'Chocolate peanut butter. Elite.', 'That\'s 30 grams bro.'],
+    crash: ['Bro... I tripped on a bench.', 'Who left that there?!', 'That\'s going on the fail compilation.', 'I meant to do that. Cardio rest.'],
+    generic: [
+      'Bro, do you even lift?', 'Sun\'s out, guns out.', 'Creatine is my love language.', 'Legs are genetic, bro. I train arms.',
+      'Is anyone using this? ...I\'m using it now.', 'Gym selfie first. Workout second.', 'Shoutout to the guy curling in the squat rack.',
+      'No pain, no gain. Some pain, some gain.', 'Bro, what do you bench?', 'I\'m not sweating, I\'m crying fat.', 'Eat. Sleep. Lift. Repeat.',
+      'My pre-workout has pre-workout.', 'Chicken, rice, broccoli. Every. Meal.', 'I\'m on a bulk, it\'s fine.', 'Hydrate or diedrate.',
+      'Light work. No reaction.', 'Bro, I\'m literally growing right now.', 'Ego lifting? Never heard of her.', 'Keep that core TIGHT.',
+      'You should see my deadlift, bro.', 'Bro split > everything.', 'Every day is arm day if you believe.', 'Spot me? Just touch it, don\'t lift it.',
+      'Abs are made in the kitchen. I\'m ordering takeout.', 'Pump cover? Never.', 'Bro, the mirror is my coach.', 'We go AGAIN!',
+      'Is it a deload week? No. It\'s never a deload week.', 'Bro, I can feel my veins.', 'Ate 6 eggs. Before breakfast.',
+    ],
+    db: ['Curl bro curl!', 'Bicep vein activated.', 'Dumbbells don\'t lie.', 'Free gains on the floor? Don\'t mind if I do.', 'Arm day, every day.'],
+    stumble: ['Bro my shoelace!', 'Who put a bench in the hallway?!', 'That was a planned stumble.', 'Chalk on the floor, bro!'],
+    chaser: ['RE-RACK YOUR WEIGHTS!', 'Those plates aren\'t yours!', 'You didn\'t wipe down the bench!', 'Your membership EXPIRED, bro!', 'No running in the gym!', 'Get back here and put that bar away!'],
+    caught: ['Gotcha! Re-rack. Every. Plate.', 'Weights go BACK on the rack, bro.', 'You\'re cleaning the mirrors now.'],
+    crowd: ['LET\'S GOOO!', 'LIGHT WEIGHT!', 'UP! UP! UP!', 'ALL YOU!', 'GOOD LIFT!', 'YEAH BUDDY!', 'THAT\'S A MEET PR!', 'EASY! EASY!', 'DRIVE IT!', 'WE LOVE YOU!'],
+    crowdIntro: ['THE CHAMP IS HERE!', 'LET\'S GOOOO!!', 'SHOW US THAT LIGHT WEIGHT!'],
+    suffix: [' Light weight, baby!', ' Lightweight!', ' Easy money.', ' Still warmup weight.', ' Somebody film this.', ' Let\'s GO.', ''],
+  };
+  const plateWord = d => `${d}s`;
+
+  // =========================================================
+  // GYM RUN — 3-lane endless runner down the gym floor
+  // =========================================================
+  let mode = 'lift';
+  const rc = $('rc'); const rctx = rc.getContext('2d');
+  let RW = 0, RH = 0, R = null;
+  const RUN = { F: 3.2, FAR: 70, NEAR: -1.6, WALL: 2.7, TRACK: 1.5, WH: 3.4 };
+  const OBST = ['bench', 'bar', 'tall', 'roll'];
+
+  function runResize() {
+    const r = rc.getBoundingClientRect(); RW = r.width; RH = r.height;
+    rc.width = RW * DPR; rc.height = RH * DPR;
+  }
+
+  function startRun() {
+    musicStart(134);
+    mode = 'run'; audio();
+    $('startScreen').classList.remove('show'); $('endScreen').classList.remove('show');
+    $('runApp').classList.add('show'); runResize();
+    R = { dist: 0, speed: 11, lane: 0, x: 0, y: 0, vy: 0, slide: 0, shakes: 0, obs: [], nextZ: 22,
+          dead: false, deadT: 0, m: CHARS[charIdx].m0, mT: CHARS[charIdx].m0, plates: [], muscle: 100, chase: 1, slowT: 0, caught: false, chatT: 6, phase: 0, hintT: 4, sparks: [], pops: [] };
+    clearBubbles(); setTimeout(() => { if (state === 'run') say('lifter', pick(BRO.run)); }, 600);
+    setTimeout(() => { if (state === 'run') say('chaser', pick(BRO.chaser), 2000); }, 2200);
+    $('runHint').style.opacity = 1;
+    state = 'run';
+  }
+
+  function spawnRow(z) {
+    const lanes = [-1, 0, 1].sort(() => Math.random() - .5);
+    const n = Math.random() < (R.speed > 16 ? .5 : .3) ? 2 : 1;
+    for (let i = 0; i < n; i++) {
+      const type = OBST[Math.random() * OBST.length | 0];
+      R.obs.push({ kind: 'obs', type, lane: lanes[i], z: z + (type === 'roll' ? 7 : 0), spin: 0 });
+      if (type === 'bench' && Math.random() < .5)        // shakes arcing over a bench
+        for (let k = 0; k < 4; k++) R.obs.push({ kind: 'shake', lane: lanes[i], z: z - 1.6 + k * 1.1, h: .45 + Math.sin(k / 3 * Math.PI) * 1.1 });
+    }
+    if (Math.random() < .45) {                           // a weight plate to load on your bar
+      const L = lanes[n === 1 && Math.random() < .5 ? 2 : n];
+      const r = Math.random(), d = r < .35 ? 45 : r < .6 ? 35 : r < .85 ? 25 : 10;
+      R.obs.push({ kind: 'plate', d, lane: L, z: z + 4, h: .6 });
+    }
+    if (Math.random() < .35) {                           // dumbbell = +5 muscle
+      R.obs.push({ kind: 'db', lane: lanes[Math.random() * 3 | 0], z: z - 5, h: .55 });
+    }
+    if (Math.random() < .75) {
+      const free = lanes[n];
+      for (let k = 0; k < 5; k++) R.obs.push({ kind: 'shake', lane: free, z: z - 3 + k * 1.3, h: .45 });
+    }
+  }
+
+  function runInput(dir) {
+    if (!R || R.dead || state !== 'run') return;
+    if (dir === 'left') R.lane = Math.max(-1, R.lane - 1);
+    else if (dir === 'right') R.lane = Math.min(1, R.lane + 1);
+    else if (dir === 'up') { if (R.y <= .01) { R.vy = 8.6; R.slide = 0; SFX.whoosh(true); } }
+    else if (dir === 'down') { R.slide = .75; if (R.y > 0) R.vy = -16; SFX.whoosh(false); }
+    if (R.hintT > 0) R.hintT = Math.min(R.hintT, .6);
+  }
+
+  function addMuscle(n) {
+    R.muscle += n;
+    R.mT = Math.min(2.6, CHARS[charIdx].m0 + (R.muscle - 100) * .006);
+  }
+  // trip over something small: the staff guy catches up. Trip again while he's close and you're caught.
+  function stumble() {
+    if (R.chase > .45) { caught(); return true; }
+    R.chase = 1; R.slowT = .7;
+    SFX.thud(.35); SFX.grunt(1.25); buzz([60, 40, 60]);
+    say('lifter', pick(BRO.stumble), 1600);
+    setTimeout(() => { if (state === 'run' && !R.dead) say('chaser', pick(BRO.chaser), 1800); }, 500);
+    return false;
+  }
+  function caught() {
+    R.dead = true; R.deadT = 0; R.caught = true; R.chase = 1;
+    SFX.whistle(); SFX.thud(.4); buzz([100, 50, 200]);
+    say('chaser', pick(BRO.caught), 2200);
+  }
+  function crash() {
+    R.dead = true; R.deadT = 0;
+    say('lifter', pick(BRO.crash), 2000);
+    SFX.crash(); buzz([120, 50, 200]);
+  }
+
+  function runUpdate(dt) {
+    if (!R) return;
+    for (const s of R.sparks) { s.x += s.vx * dt; s.y += s.vy * dt; s.vy += 400 * dt; s.life -= dt * 2; }
+    R.sparks = R.sparks.filter(s => s.life > 0);
+    if (R.dead) { R.deadT += dt; if (R.deadT > 1.2 && state === 'run') runOver(); return; }
+    R.speed = Math.min(27, 11 + R.dist * .016) * (R.slowT > 0 ? .7 : 1);
+    R.slowT = Math.max(0, R.slowT - dt);
+    R.chase = Math.max(0, R.chase - dt / 5.5);
+    R.chatT -= dt;
+    if (R.chatT <= 0) { R.chatT = 7 + Math.random() * 6; if (!bubbles.lifter) say('lifter', pick(BRO.generic), 2400); }
+    if (R.chase > .75 && !bubbles.chaser && Math.random() < dt * .6) say('chaser', pick(BRO.chaser), 1800);
+    R.dist += R.speed * dt; R.phase += R.speed * dt * 1.9;
+    R.x += clamp(R.lane - R.x, -11 * dt, 11 * dt);
+    if (R.y > 0 || R.vy > 0) { R.vy -= 24 * dt; R.y = Math.max(0, R.y + R.vy * dt); if (R.y === 0) { R.vy = 0; SFX.thud(.25); } }
+    { const sg = Math.sin(R.phase) > 0; if (sg !== R.lastSg && R.y === 0 && R.slide <= 0) SFX.step(); R.lastSg = sg; }
+    R.slide = Math.max(0, R.slide - dt);
+    while (R.nextZ < R.dist + RUN.FAR + 10) { spawnRow(R.nextZ); R.nextZ += Math.max(9, 17 - R.speed * .25) + Math.random() * 5; }
+    for (const o of R.obs) {
+      if (o.type === 'roll') { o.z -= 4 * dt; o.spin += dt * 14; }
+      const z = o.z - R.dist;
+      const win = o.kind === 'shake' ? .45 : .28;
+      if (o.gone || Math.abs(R.x - o.lane) > .55 || z > win || z < -win) continue;
+      if (o.kind === 'plate') {
+        if (Math.abs(R.y + .6 - o.h) < .9) {
+          o.gone = true;
+          const prev = runBar(); R.plates.push(o.d);
+          addMuscle(10);
+          SFX.clank(true); SFX.ding(); buzz([30, 30, 60]);
+          R.pops.push({ text: `+${o.d * 2} LB · +10 MUSCLE`, life: 1 });
+          say('lifter', `Two ${plateWord(o.d)} = ${o.d * 2} + the bar (${prev}) = ${prev + o.d * 2}!` + pick(BRO.suffix), 2600);
+          R.sparks.push(...Array.from({ length: 10 }, () => ({ x: 0, y: 0, vx: (Math.random() - .5) * 200, vy: -Math.random() * 200, life: 1, lane: o.lane, z: z, h: o.h, gold: true })));
+        }
+      } else if (o.kind === 'db') {
+        if (Math.abs(R.y + .6 - o.h) < .9) {
+          o.gone = true; addMuscle(5);
+          SFX.clink(); buzz(20);
+          R.pops.push({ text: '+5 MUSCLE', life: 1 });
+          if (Math.random() < .35) say('lifter', pick(BRO.db), 1800);
+          R.sparks.push(...Array.from({ length: 8 }, () => ({ x: 0, y: 0, vx: (Math.random() - .5) * 180, vy: -Math.random() * 180, life: 1, lane: o.lane, z: z, h: o.h, gold: true })));
+        }
+      } else if (o.kind === 'shake') {
+        if (Math.abs(R.y + .6 - o.h) < .9) {
+          o.gone = true; R.shakes++;
+          if (Math.random() < .12 && !bubbles.lifter) say('lifter', pick(BRO.shake), 1800);
+          SFX.bloop(); buzz(8);
+          R.sparks.push(...Array.from({ length: 6 }, () => ({ x: 0, y: 0, vx: (Math.random() - .5) * 160, vy: -Math.random() * 160, life: 1, lane: o.lane, z: z, h: o.h })));
+        }
+      } else {
+        const hit = o.type === 'bench' ? R.y < .38 : o.type === 'roll' ? R.y < .6 : o.type === 'bar' ? R.slide <= 0 : true;
+        if (hit) {
+          if (o.type === 'bench' || o.type === 'roll') { o.gone = true; if (stumble()) break; }
+          else { crash(); break; }
+        }
+      }
+    }
+    R.obs = R.obs.filter(o => o.z - R.dist > -3 && !(o.gone && o.kind !== 'obs'));
+    R.m += (R.mT - R.m) * Math.min(1, dt * 3);
+    for (const q of R.pops) q.life -= dt * 1.2; R.pops = R.pops.filter(q => q.life > 0);
+    $('runGains').textContent = runBar();
+    $('runMuscle').textContent = R.muscle;
+    R.hintT -= dt; if (R.hintT <= 0) $('runHint').style.opacity = 0;
+    $('runScore').textContent = runScore();
+    $('runShakes').textContent = R.shakes;
+  }
+  const runBar = () => BAR_LB + 2 * R.plates.reduce((a, b) => a + b, 0);
+  const runScore = () => Math.floor(R.dist) + R.shakes * 10 + (runBar() - BAR_LB) + (R.muscle - 100) * 2;
+
+  function runOver() {
+    musicStop();
+    state = 'end';
+    const prev = load('irontap_run_best') || { score: 0 };
+    const score = runScore(), better = score > prev.score;
+    if (better) save('irontap_run_best', { score, dist: Math.floor(R.dist), shakes: R.shakes });
+    $('endTitle').textContent = R.caught ? 'CAUGHT!' : 'WIPED OUT';
+    $('endStats').innerHTML = [
+      [score, 'Score'], [Math.floor(R.dist) + ' m', 'Distance'],
+      [R.shakes, 'Shakes'], [Math.max(score, prev.score), 'Best score'],
+    ].map(([v, l]) => `<div class="stat"><b>${v}</b><span>${l}</span></div>`).join('');
+    $('endNote').textContent = (R.caught ? 'The staff guy made you re-rack everything. ' : '') + `${runBar()} lb on the bar · ${R.muscle} muscle` + (better && score > 0 ? ' · NEW BEST RUN' : '');
+    $('endScreen').classList.add('show');
+  }
+
+  // ---- runner body poses (seen from behind)
+  function runPose(ph, m, sliding, air, lean, bar = true) {
+    const shW = 8.4 + 2.6 * (m - 1);
+    if (sliding) {
+      const J = standing(29, 15, 13, 13, 15, shW);
+      J.head.y = 36.5;
+      J.el = [{ x: -shW - 5, y: 23 }, { x: shW + 5, y: 23 }];
+      return bar ? withBar(J, shW) : J;
+    }
+    const a = Math.sin(ph), bob = Math.abs(Math.cos(ph));
+    const J = standing(55 + bob * 1.4, 35.5 + bob, 19, 5.8, 5, shW, 0);
+    const up = v => Math.max(0, v);
+    J.ft[0] = { x: -4.5, y: 2.4 + (air ? 9 : up(a) * 13) }; J.kn[0] = { x: -5.6, y: 19 + (air ? 5 : up(a) * 6) };
+    J.ft[1] = { x: 4.5, y: 2.4 + (air ? 4 : up(-a) * 13) }; J.kn[1] = { x: 5.6, y: 19 + (air ? 2 : up(-a) * 6) };
+    const sw = air ? 0 : a;
+    J.el = [{ x: -shW - 3.5, y: 45 + sw * 3 }, { x: shW + 3.5, y: 45 - sw * 3 }];
+    J.ha = [{ x: -shW - 1.5, y: air ? 50 : 37 + sw * 8 }, { x: shW + 1.5, y: air ? 50 : 37 - sw * 8 }];
+    for (const k of ['sh']) J[k].forEach(q => q.x += lean);
+    J.head.x += lean * 1.3;
+    return bar ? withBar(J, shW) : J;
+  }
+
+  // hands on a barbell resting across the upper back
+  function withBar(J, shW) {
+    const by = (J.sh[0].y + J.sh[1].y) / 2 + 1.5;
+    J.ha = [{ x: -(shW + 5), y: by }, { x: shW + 5, y: by }];
+    J.el = [{ x: -(shW + 4.5), y: by - 8 }, { x: shW + 4.5, y: by - 8 }];
+    J.barY = by;
+    return J;
+  }
+  const PL_SC = { 45: 1, 35: .8, 25: .63, 10: .5 }, PL_TK = { 45: 2, 35: 1.7, 25: 1.4, 10: 1.0 };
+  function drawRunBar(J, shW) {
+    drawBarbell(J.barY, 0, shW + 5, 0);
+    const list = [...R.plates].sort((a, b) => b - a).slice(0, 8);
+    for (const s of [-1, 1]) {
+      let x = BAR.collar + .5;
+      for (const d of list) { const t = PL_TK[d]; x += t / 2; drawPlate(X(s * x), Y(Math.max(J.barY, PLATE.R * PL_SC[d])), 0, s, PL_SC[d], t); x += t / 2 + .08; }
+    }
+  }
+
+  function drawHeadBack(J, ch) {
+    const c = P(J.head), r = 4.7 * u;
+    shadedEllipse(c.x - r * .96, c.y + r * .1, r * .2, r * .3, tint(ch.skin, -.08));
+    shadedEllipse(c.x + r * .96, c.y + r * .1, r * .2, r * .3, tint(ch.skin, -.08));
+    shadedEllipse(c.x, c.y, r * .93, r * 1.05, ch.skin);
+    const hg = ctx.createLinearGradient(0, c.y - r * 1.9, 0, c.y + r * .5);
+    hg.addColorStop(0, tint(ch.hairCol, .2)); hg.addColorStop(1, tint(ch.hairCol, -.3));
+    ctx.fillStyle = hg;
+    ctx.beginPath(); ctx.ellipse(c.x, c.y - r * .22, r * .95, r * .9, 0, 0, 7); ctx.fill();
+    if (ch.hair === 'flattop') { rrect(c.x - r * .9, c.y - r * 1.36, r * 1.8, r * .8, r * .1); ctx.fill(); }
+    else if (ch.hair === 'hightop') { rrect(c.x - r * .86, c.y - r * 1.85, r * 1.72, r * 1.4, r * .22); ctx.fill(); }
+    ctx.fillStyle = 'rgba(30,15,8,.25)'; ctx.fillRect(c.x - r * .5, c.y + r * .75, r, r * .12);
+  }
+
+  // ---- drawing
+  function runDraw() {
+    if (!R) return;
+    const c = rctx; c.setTransform(DPR, 0, 0, DPR, 0, 0);
+    const W2 = RW, H2 = RH, hy = H2 * .33, by = H2 * .9, P0 = Math.min(W2 * .29, H2 * (W2 > H2 ? .215 : .2));
+    const { F, FAR, NEAR, WALL, TRACK, WH } = RUN;
+    const camX = R.x * .55;
+    const sc = z => F / Math.max(.08, z + F);
+    const gy = z => hy + (by - hy) * sc(z);
+    const sx = (x, z) => W2 / 2 + (x - camX) * P0 * sc(z);
+    const up = (h, z) => h * P0 * sc(z);
+    const pt = (x, z, h = 0) => [sx(x, z), gy(z) - up(h, z)];
+    const quad = (pts, fill) => { c.fillStyle = fill; c.beginPath(); pts.forEach(([x, y], i) => i ? c.lineTo(x, y) : c.moveTo(x, y)); c.closePath(); c.fill(); };
+    const lin = (y0, y1, a, b) => { const g = c.createLinearGradient(0, y0, 0, y1); g.addColorStop(0, a); g.addColorStop(1, b); return g; };
+
+    const shk = R.dead ? Math.max(0, .35 - R.deadT) * 26 : 0;
+    c.save(); c.translate((Math.random() - .5) * shk, (Math.random() - .5) * shk);
+
+    // ceiling
+    c.fillStyle = lin(0, hy, '#0b0b0c', '#26221f'); c.fillRect(-30, -30, W2 + 60, H2 + 60);
+    // back wall with sign
+    quad([pt(-WALL, FAR, WH), pt(WALL, FAR, WH), pt(WALL, FAR), pt(-WALL, FAR)], '#3a2620');
+    c.save(); c.font = `700 ${Math.max(8, up(.45, FAR))}px Oswald, sans-serif`; c.textAlign = 'center'; c.textBaseline = 'middle';
+    c.shadowColor = 'rgba(255,90,60,.9)'; c.shadowBlur = 8; c.fillStyle = '#ff6a50';
+    c.fillText('IRON TAP GYM', sx(0, FAR), gy(FAR) - up(WH * .62, FAR)); c.restore();
+
+    // side walls: brick, mirrors, pillars and dumbbell racks that stream past
+    for (const side of [-1, 1]) {
+      const x = side * WALL;
+      quad([pt(x, FAR, WH), pt(x, NEAR, WH), pt(x, NEAR), pt(x, FAR)], side < 0 ? '#5a3226' : '#4d2b21');
+      c.strokeStyle = 'rgba(0,0,0,.22)'; c.lineWidth = 1;
+      for (let h = .2; h < WH; h += .22) { const [x0, y0] = pt(x, FAR, h), [x1, y1] = pt(x, NEAR, h); c.beginPath(); c.moveTo(x0, y0); c.lineTo(x1, y1); c.stroke(); }
+      const o = R.dist % 6;
+      for (let k = 12; k >= 0; k--) {
+        const z0 = k * 6 - o, z1 = z0 + 4.2;
+        if (z1 < NEAR || z0 > FAR) continue;
+        const za = Math.max(z0, NEAR);
+        const mg = c.createLinearGradient(sx(x, za), 0, sx(x, z1), 0);
+        mg.addColorStop(0, '#6a7884'); mg.addColorStop(.5, '#3a454e'); mg.addColorStop(1, '#5a6772');
+        quad([pt(x, za, 2.9), pt(x, z1, 2.9), pt(x, z1, 1.0), pt(x, za, 1.0)], mg);
+        quad([pt(x, za, 2.98), pt(x, z1, 2.98), pt(x, z1, 2.9), pt(x, za, 2.9)], '#1a1a1a');
+        // dumbbell rack under the mirror
+        quad([pt(x, za, .85), pt(x, z1, .85), pt(x, z1), pt(x, za)], '#1c1d1f');
+        for (let d = 0; d < 4; d++) {
+          const zd = z0 + .5 + d * .95; if (zd < NEAR) continue;
+          for (const hh of [.6, .25]) { const [dx, dy] = pt(x - side * .05, zd, hh); const r = up(.11, zd); c.fillStyle = '#0d0d0e'; c.beginPath(); c.arc(dx, dy, r, 0, 7); c.fill(); c.fillStyle = 'rgba(255,255,255,.18)'; c.beginPath(); c.arc(dx - r * .3, dy - r * .3, r * .35, 0, 7); c.fill(); }
+        }
+        // pillar
+        const zp = z1 + .3; if (zp > NEAR) quad([pt(x, zp, WH), pt(x, zp + .8, WH), pt(x, zp + .8), pt(x, zp)], '#2a2b2e');
+      }
+    }
+    // floor: rubber + three wooden lanes with yellow lines
+    quad([pt(-WALL, FAR), pt(WALL, FAR), pt(WALL, NEAR), pt(-WALL, NEAR)], lin(gy(FAR), gy(NEAR), '#141416', '#2e2e31'));
+    for (const L of [-1, 0, 1]) quad([pt(L - .47, FAR), pt(L + .47, FAR), pt(L + .47, NEAR), pt(L - .47, NEAR)], lin(gy(FAR), gy(NEAR), '#2e2116', '#8f6a45'));
+    const off = R.dist % 1.6;
+    for (let k = 0; k < 46; k++) {
+      const z = k * 1.6 - off; if (z < NEAR || z > FAR) continue;
+      const [x0, y0] = pt(-TRACK, z), [x1] = pt(TRACK, z);
+      c.fillStyle = `rgba(0,0,0,${.12 + .25 * sc(z)})`; c.fillRect(x0, y0, x1 - x0, Math.max(1, 2.2 * sc(z)));
+    }
+    for (const e of [-1.5, -.5, .5, 1.5]) quad([pt(e - .03, FAR), pt(e + .03, FAR), pt(e + .03, NEAR), pt(e - .03, NEAR)], 'rgba(255,197,49,.85)');
+    // ceiling lights
+    const lo = R.dist % 7;
+    for (let k = 10; k >= 0; k--) {
+      const z = k * 7 - lo; if (z < 3) continue;
+      const [lx, ly] = pt(0, z, WH - .05);
+      c.save(); c.shadowColor = 'rgba(255,230,190,.9)'; c.shadowBlur = 20 * sc(z) + 4; c.fillStyle = '#fff4de';
+      c.beginPath(); c.ellipse(lx, ly, up(1.3, z), Math.max(1, up(.07, z)), 0, 0, 7); c.fill(); c.restore();
+    }
+    // warm light pooling down the lanes + distance haze
+    c.fillStyle = lin(hy - 20, gy(8), 'rgba(20,14,10,.6)', 'rgba(20,14,10,0)'); c.fillRect(0, hy - 30, W2, gy(8) - hy + 30);
+
+    // ---- objects (far → near), runner drawn in depth order
+    const box = (xc, z, w, d, h0, h1, front, top, sideC) => {
+      const xl = xc - w / 2, xr = xc + w / 2;
+      if (xl > camX) quad([pt(xl, z, h1), pt(xl, z + d, h1), pt(xl, z + d, h0), pt(xl, z, h0)], sideC);
+      if (xr < camX) quad([pt(xr, z, h1), pt(xr, z + d, h1), pt(xr, z + d, h0), pt(xr, z, h0)], sideC);
+      quad([pt(xl, z, h1), pt(xr, z, h1), pt(xr, z + d, h1), pt(xl, z + d, h1)], top);
+      quad([pt(xl, z, h1), pt(xr, z, h1), pt(xr, z, h0), pt(xl, z, h0)], front);
+    };
+    const plateDisc = (x, y, r) => {
+      const g = c.createRadialGradient(x - r * .3, y - r * .35, r * .1, x, y, r);
+      g.addColorStop(0, '#4a4a4a'); g.addColorStop(.6, '#1c1c1c'); g.addColorStop(1, '#070707');
+      c.fillStyle = g; c.beginPath(); c.arc(x, y, r, 0, 7); c.fill();
+      c.strokeStyle = 'rgba(255,255,255,.18)'; c.lineWidth = Math.max(1, r * .06); c.beginPath(); c.arc(x, y, r * .92, Math.PI * 1.05, Math.PI * 1.6); c.stroke();
+      c.fillStyle = '#121212'; c.beginPath(); c.arc(x, y, r * .7, 0, 7); c.fill();
+      c.fillStyle = '#b9bdc1'; c.beginPath(); c.arc(x, y, r * .14, 0, 7); c.fill();
+    };
+    const plateFace = (x, y, r, d) => {
+      let g = c.createRadialGradient(x - r * .35, y - r * .4, r * .1, x, y, r);
+      g.addColorStop(0, '#606367'); g.addColorStop(.55, '#2a2b2e'); g.addColorStop(1, '#0b0b0c');
+      c.fillStyle = g; c.beginPath(); c.arc(x, y, r, 0, 7); c.fill();
+      c.lineWidth = Math.max(1, r * .05);
+      c.strokeStyle = 'rgba(255,255,255,.3)'; c.beginPath(); c.arc(x, y, r * .95, Math.PI * 1.05, Math.PI * 1.6); c.stroke();
+      c.strokeStyle = 'rgba(0,0,0,.6)'; c.beginPath(); c.arc(x, y, r * .95, Math.PI * .1, Math.PI * .6); c.stroke();
+      g = c.createRadialGradient(x + r * .2, y + r * .25, r * .1, x, y, r * .8);
+      g.addColorStop(0, '#1f2022'); g.addColorStop(1, '#111214');
+      c.fillStyle = g; c.beginPath(); c.arc(x, y, r * .8, 0, 7); c.fill();
+      c.lineWidth = Math.max(1, r * .035);
+      c.strokeStyle = 'rgba(0,0,0,.75)'; c.beginPath(); c.arc(x, y, r * .8, Math.PI, Math.PI * 1.6); c.stroke();
+      c.strokeStyle = 'rgba(255,255,255,.13)'; c.beginPath(); c.arc(x, y, r * .8, 0, Math.PI * .55); c.stroke();
+      g = c.createRadialGradient(x - r * .1, y - r * .12, r * .02, x, y, r * .3);
+      g.addColorStop(0, '#585b5f'); g.addColorStop(1, '#1a1b1d');
+      c.fillStyle = g; c.beginPath(); c.arc(x, y, r * .3, 0, 7); c.fill();
+      g = c.createRadialGradient(x - r * .04, y - r * .05, r * .01, x, y, r * .13);
+      g.addColorStop(0, '#ffffff'); g.addColorStop(.5, '#b9bdc1'); g.addColorStop(1, '#5f6367');
+      c.fillStyle = g; c.beginPath(); c.arc(x, y, r * .13, 0, 7); c.fill();
+      if (d) {
+        c.fillStyle = '#ffc531'; c.textAlign = 'center'; c.textBaseline = 'middle';
+        c.font = `700 ${Math.max(7, r * .36)}px Oswald, sans-serif`; c.fillText(d, x, y - r * .55);
+        c.font = `700 ${Math.max(5, r * .2)}px Oswald, sans-serif`; c.fillText('LB', x, y + r * .56);
+      }
+    };
+    const shadow = (x, z, w) => { const [sx0, sy0] = pt(x, z); c.fillStyle = 'rgba(0,0,0,.4)'; c.beginPath(); c.ellipse(sx0, sy0, up(w, z), up(w * .18, z), 0, 0, 7); c.fill(); };
+
+    const drawObj = (o, z) => {
+      c.globalAlpha = clamp((FAR - z) / 14, 0, 1);
+      const L = o.lane, k = up(1, z);
+      if (o.kind === 'plate') {
+        const bob = Math.sin(R.dist * 2 + o.z) * .06, rot = R.dist * 1.2 + o.z;
+        const sz = { 45: .3, 35: .25, 25: .2, 10: .15 }[o.d];
+        const [x, y] = pt(L, z, o.h + bob);
+        const r = k * sz, sxr = Math.max(.22, Math.abs(Math.cos(rot)));
+        const glow = c.createRadialGradient(x, y, 1, x, y, r * 1.6);
+        glow.addColorStop(0, 'rgba(255,197,49,.45)'); glow.addColorStop(1, 'rgba(255,197,49,0)');
+        c.fillStyle = glow; c.beginPath(); c.arc(x, y, r * 1.6, 0, 7); c.fill();
+        c.save(); c.translate(x, y); c.scale(sxr, 1);
+        // edge thickness visible as it turns
+        c.fillStyle = '#0a0a0a'; c.beginPath(); c.arc(r * .1 * Math.sign(Math.cos(rot)) * (1 - sxr), 0, r, 0, 7); c.fill();
+        plateFace(0, 0, r, o.d);
+        c.restore();
+      } else if (o.kind === 'db') {
+        const bob = Math.sin(R.dist * 2 + o.z) * .06, tilt = Math.sin(R.dist * .9 + o.z) * .18;
+        const [x, y] = pt(L, z, o.h + bob);
+        const hl = k * .17, hh = k * .085, hd = k * .07;          // handle half-length, head half-height, head depth
+        c.save(); c.translate(x, y); c.rotate(tilt);
+        // soft glow so it reads as a pickup
+        const glow = c.createRadialGradient(0, 0, 1, 0, 0, k * .36);
+        glow.addColorStop(0, 'rgba(255,170,90,.45)'); glow.addColorStop(1, 'rgba(255,170,90,0)');
+        c.fillStyle = glow; c.beginPath(); c.arc(0, 0, k * .36, 0, 7); c.fill();
+        // knurled chrome handle
+        let g = c.createLinearGradient(0, -k * .022, 0, k * .022);
+        g.addColorStop(0, '#ffffff'); g.addColorStop(.45, '#b7bbbf'); g.addColorStop(1, '#55595d');
+        c.fillStyle = g; c.fillRect(-hl, -k * .02, hl * 2, k * .04);
+        c.fillStyle = 'rgba(0,0,0,.28)';
+        for (let i = -6; i <= 6; i++) c.fillRect(i * hl / 7.5, -k * .02, Math.max(.8, k * .004), k * .04);
+        for (const s of [-1, 1]) {
+          const cx0 = s * (hl + hd / 2);
+          // hex head seen from the side: chamfered block (rubber), lit from above
+          g = c.createLinearGradient(0, -hh, 0, hh);
+          g.addColorStop(0, '#4a4c50'); g.addColorStop(.18, '#2b2c2f'); g.addColorStop(.6, '#17181a'); g.addColorStop(1, '#070707');
+          c.fillStyle = g;
+          const ch = hh * .42, x0 = cx0 - hd / 2, x1 = cx0 + hd / 2;
+          c.beginPath();
+          c.moveTo(x0, -hh + ch); c.lineTo(x0 + hd * .18, -hh); c.lineTo(x1 - hd * .18, -hh); c.lineTo(x1, -hh + ch);
+          c.lineTo(x1, hh - ch); c.lineTo(x1 - hd * .18, hh); c.lineTo(x0 + hd * .18, hh); c.lineTo(x0, hh - ch); c.closePath(); c.fill();
+          // hex facet lines + top highlight
+          c.strokeStyle = 'rgba(255,255,255,.14)'; c.lineWidth = Math.max(.8, k * .004);
+          c.beginPath(); c.moveTo(x0, -hh + ch); c.lineTo(x1, -hh + ch); c.moveTo(x0, hh - ch); c.lineTo(x1, hh - ch); c.stroke();
+          c.fillStyle = 'rgba(255,255,255,.22)'; c.fillRect(x0 + hd * .18, -hh, hd * .64, Math.max(1, k * .006));
+          // chrome end cap
+          g = c.createLinearGradient(0, -hh * .5, 0, hh * .5); g.addColorStop(0, '#f2f2f2'); g.addColorStop(1, '#6a6e72');
+          c.fillStyle = g; c.fillRect(s < 0 ? x0 - k * .008 : x1, -hh * .45, k * .008, hh * .9);
+        }
+        c.restore();
+      } else if (o.kind === 'shake') {
+        const bob = Math.sin(R.dist * 2 + o.z) * .06;
+        const [x, y] = pt(L, z, o.h + bob);
+        const w = k * .17, h = k * .34;
+        c.save(); c.shadowColor = 'rgba(127,214,255,.9)'; c.shadowBlur = 12 * sc(z) + 2;
+        const g = c.createLinearGradient(x - w / 2, 0, x + w / 2, 0); g.addColorStop(0, '#c9d3dc'); g.addColorStop(.35, '#ffffff'); g.addColorStop(1, '#8e9aa5');
+        c.fillStyle = g; rrectC(c, x - w / 2, y - h / 2, w, h, w * .25); c.fill(); c.restore();
+        c.fillStyle = '#1f7ed6'; c.fillRect(x - w / 2, y - h * .08, w, h * .3);
+        c.fillStyle = '#141414'; rrectC(c, x - w * .45, y - h * .66, w * .9, h * .2, w * .1); c.fill();
+      } else if (o.type === 'bench') {
+        shadow(L, z + .15, .45);
+        box(L - .3, z + .05, .07, .25, 0, .3, '#2b2d30', '#45494d', '#1b1c1e');
+        box(L + .3, z + .05, .07, .25, 0, .3, '#2b2d30', '#45494d', '#1b1c1e');
+        box(L, z, .88, .32, .3, .5, lin(gy(z) - up(.5, z), gy(z) - up(.3, z), '#a3302a', '#5c1510'), '#c0453b', '#4a110d');
+      } else if (o.type === 'bar') {
+        shadow(L, z, .6);
+        // draw with the Lift-mode rack/bar/plates, scaled into this lane
+        const saved = { ctx, u, floorY, cxS }, bu = k / 40 * .72;
+        ctx = c; u = bu; cxS = sx(L, z); floorY = gy(z);
+        const barIn = 1.32 * 40 / .72;          // bar sits ~1.3 lanes-units up: slide under it
+        drawRack(barIn - 1.2);
+        drawBarbell(barIn, 0, 16, 2);
+        ({ ctx, u, floorY, cxS } = saved);
+      } else if (o.type === 'tall') {
+        shadow(L, z + .3, .5);
+        const fr = lin(gy(z) - up(2.3, z), gy(z), '#4b5056', '#1d1f22');
+        box(L, z, .86, .7, 0, 2.3, fr, '#5d6268', '#26292c');
+        // weight stack + rods + pulley on the front face
+        const [x0, yTop] = pt(L - .3, z, 1.35), [x1, yBot] = pt(L + .3, z, .12);
+        for (let i = 0; i < 10; i++) { const yy = lerp(yBot, yTop, i / 10); c.fillStyle = i % 2 ? '#141414' : '#1d1d1d'; c.fillRect(x0, yy - (yBot - yTop) / 10, x1 - x0, (yBot - yTop) / 10 - 1); c.fillStyle = 'rgba(255,255,255,.12)'; c.fillRect(x0, yy - (yBot - yTop) / 10, x1 - x0, 1); }
+        c.fillStyle = '#c9cdd1'; const [rx0] = pt(L - .2, z), [rx1] = pt(L + .2, z); const [, ry] = pt(L, z, 2.1);
+        c.fillRect(rx0, ry, Math.max(1, k * .02), yTop - ry); c.fillRect(rx1, ry, Math.max(1, k * .02), yTop - ry);
+        const [px, py] = pt(L, z, 2.05); plateDisc(px, py, k * .12);
+        const [hx0, hy0] = pt(L - .43, z, .1), [hx1] = pt(L + .43, z);
+        for (let i = 0; i < 6; i++) { c.fillStyle = i % 2 ? '#111' : '#ffc531'; c.fillRect(hx0 + (hx1 - hx0) * i / 6, hy0 - k * .1, (hx1 - hx0) / 6, k * .1); }
+      } else if (o.type === 'roll') {
+        shadow(L, z, .3);
+        const [x, y] = pt(L, z, .45 + Math.abs(Math.sin(o.spin * .5)) * .04);
+        const g = c.createLinearGradient(x - k * .13, 0, x + k * .13, 0); g.addColorStop(0, '#060606'); g.addColorStop(.4, '#3a3a3a'); g.addColorStop(1, '#0c0c0c');
+        c.fillStyle = g; c.beginPath(); c.ellipse(x, y, k * .13, k * .45, 0, 0, 7); c.fill();
+        c.strokeStyle = 'rgba(255,255,255,.35)'; c.lineWidth = Math.max(1, k * .015);
+        for (let i = 0; i < 4; i++) { const a = o.spin + i * Math.PI / 2, yy = y + Math.sin(a) * k * .42; if (Math.cos(a) > 0) { c.beginPath(); c.moveTo(x - k * .1, yy); c.lineTo(x + k * .1, yy); c.stroke(); } }
+      }
+      c.globalAlpha = 1;
+    };
+
+    const drawRunner = () => {
+      const [px, py] = pt(R.x, 0);
+      c.fillStyle = 'rgba(0,0,0,.45)'; c.beginPath(); c.ellipse(px, py, up(.36, 0) * (1 - Math.min(.5, R.y * .3)), up(.07, 0), 0, 0, 7); c.fill();
+      const saved = { ctx, u, floorY, cxS };
+      ctx = c; u = P0 / 40; cxS = px; floorY = py - up(R.y, 0);
+      const ch = { ...CHARS[charIdx], shirt: '#2c3440' };
+      const J = runPose(R.phase, R.m, R.slide > 0, R.y > .05, (R.lane - R.x) * 5);
+      c.save();
+      if (R.dead) { const a = Math.min(1, R.deadT * 3); c.translate(px, py); c.rotate(-a * .35); c.translate(-px, -py + a * up(.15, 0)); }
+      lit(() => { drawLower(J, ch, R.m); drawTorso(J, ch, R.m); drawHeadBack(J, ch); }, { dpr: DPR });
+      drawRunBar(J, 8.4 + 2.6 * (R.m - 1));
+      lit(() => drawArms(J, ch, R.m), { dpr: DPR });
+      // bubble sits low beside his legs so it never hides what's coming down the lane
+      anchors.lifter = { x: px + up(.22, 0), y: py - up(.25, 0) };
+      c.restore();
+      ({ ctx, u, floorY, cxS } = saved);
+    };
+
+    const list = R.obs.filter(o => !o.gone).map(o => ({ o, z: o.z - R.dist })).filter(e => e.z < FAR && e.z > NEAR - .4);
+    list.sort((a, b) => b.z - a.z);
+    let drawn = false;
+    for (const e of list) { if (!drawn && e.z < 0) { drawRunner(); drawn = true; } drawObj(e.o, e.z); }
+    if (!drawn) drawRunner();
+
+    // the angry staff guy chasing you
+    if (R.chase > .02) {
+      const cz = lerp(-3.4, -1.05, ease(clamp(R.chase, 0, 1))), cxw = R.x - .6;
+      const [px, py] = pt(cxw, cz);
+      const saved = { ctx, u, floorY, cxS };
+      ctx = c; u = P0 * sc(cz) / 40; cxS = px; floorY = py;
+      const STAFF = { skin: '#c58c62', hair: 'short', hairCol: '#3a2a1a', shirt: '#b3261e', shorts: '#1d1d1d', trim: '#1d1d1d' };
+      const J = runPose(R.phase * 1.08 + 1.4, 1.1, false, false, 0, false);
+      lit(() => { drawLower(J, STAFF, 1.1); drawTorso(J, STAFF, 1.1); drawArms(J, STAFF, 1.1); drawHeadBack(J, STAFF); }, { dpr: DPR });
+      const back = P({ x: 0, y: 50 });
+      c.fillStyle = '#fff'; c.font = `700 ${Math.round(3.4 * u)}px Oswald, sans-serif`; c.textAlign = 'center'; c.textBaseline = 'middle';
+      c.fillText('STAFF', back.x, back.y);
+      { const hp = P(J.head); anchors.chaser = { x: hp.x, y: hp.y - 5 * u }; }
+      ({ ctx, u, floorY, cxS } = saved);
+    } else delete anchors.chaser;
+
+    // shake pickup sparkles
+    for (const s of R.sparks) { const [x, y] = pt(s.lane, Math.max(.05, s.z), s.h); c.fillStyle = s.gold ? `rgba(255,197,49,${s.life})` : `rgba(127,214,255,${s.life})`; c.beginPath(); c.arc(x + s.x * .3, y + s.y * .3, 2.5, 0, 7); c.fill(); }
+    for (const q of R.pops) {
+      const [x, y] = pt(R.x, 0, 2.1 + (1 - q.life) * .5);
+      c.save(); c.globalAlpha = Math.min(1, q.life * 1.5); c.font = `700 ${Math.round(up(.32, 0))}px Oswald, sans-serif`; c.textAlign = 'center';
+      c.shadowColor = 'rgba(0,0,0,.8)'; c.shadowBlur = 6; c.fillStyle = '#ffc531'; c.fillText(q.text, x, y); c.restore();
+    }
+    drawBubbles(c, W2, H2);
+    if (R.dead) { c.fillStyle = `rgba(224,64,42,${Math.max(0, .45 - R.deadT * .4)})`; c.fillRect(-30, -30, W2 + 60, H2 + 60); }
+    c.restore();
+  }
+  function rrectC(c, x, y, w, h, r) {
+    c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r);
+    c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath();
+  }
+
+  // ---- swipe + keyboard controls
+  let swipe = null;
+  const ra = $('runApp');
+  ra.addEventListener('pointerdown', e => { e.preventDefault(); audio(); swipe = { x: e.clientX, y: e.clientY, done: false }; }, { passive: false });
+  ra.addEventListener('pointermove', e => {
+    if (!swipe || swipe.done) return;
+    const dx = e.clientX - swipe.x, dy = e.clientY - swipe.y;
+    if (Math.hypot(dx, dy) > 26) { swipe.done = true; runInput(Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up')); }
+  });
+  ra.addEventListener('pointerup', () => { if (swipe && !swipe.done) runInput('up'); swipe = null; });
+  addEventListener('keydown', e => {
+    if (mode !== 'run') return;
+    const k = { ArrowLeft: 'left', KeyA: 'left', ArrowRight: 'right', KeyD: 'right', ArrowUp: 'up', KeyW: 'up', Space: 'up', ArrowDown: 'down', KeyS: 'down' }[e.code];
+    if (k) { e.preventDefault(); if (!e.repeat) runInput(k); }
+  });
+
+  // ---- menu mode toggle
+  function setMode(mo) {
+    mode = mo;
+    document.querySelectorAll('.modeBtn').forEach(b => b.classList.toggle('sel', b.dataset.mode === mo));
+    $('workoutWrap').style.display = mo === 'lift' ? '' : 'none';
+    $('startBtn').textContent = mo === 'lift' ? 'START LIFTING' : 'START RUNNING';
+    $('subTxt').textContent = mo === 'lift'
+      ? 'Every tap is a rep. Every 5 reps you rack it, get up and load more plates. Stop tapping and your spotter re-racks it. A new PR every 20, and your lifter grows with each one.'
+      : 'Sprint down the gym floor with a bar on your back while the staff guy chases you. Grab plates (+10 muscle, more weight on the bar), dumbbells (+5 muscle) and protein shakes. Trip twice and he catches you.';
+    $('rulesTxt').innerHTML = mo === 'lift'
+      ? 'Max out the sleeves, re-rack, and move up a level on the same lift.<br>The longer you go, the less time you get between taps. <b>Stop tapping and your spotter runs in and re-racks the bar</b>. Set over, start again.' + (DESK ? '<br><b>Computer:</b> Space or click to lift · P pause · M mute · Enter start' : '')
+      : '<b>Swipe left/right</b> to change lanes, <b>swipe up or tap</b> to jump, <b>swipe down</b> to slide.<br>Jump benches and rolling plates (trip on one and the staff guy catches up), slide under barbells, go around machines.' + (DESK ? '<br><b>Computer:</b> ← → or A/D lanes · ↑, W or Space jump · ↓ or S slide · P pause · M mute' : '');
+    if (mo === 'run') { const b = load('irontap_run_best'); $('bestLbl').textContent = b ? `BEST RUN · ${b.score} pts · ${b.dist} m · ${b.shakes} shakes` : ''; }
+    else refreshBest();
+  }
+  document.querySelectorAll('.modeBtn').forEach(b => b.addEventListener('click', () => setMode(b.dataset.mode)));
+
+  // =========================================================
+  // BUTTONS + LOOP
+  // =========================================================
+  let paused = false;
+  const playing = () => (mode === 'run' ? state === 'run' : state === 'play');
+  function setPaused(v) {
+    if (v && !playing()) return;
+    paused = v; $('pauseScreen').classList.toggle('show', v);
+    $('pauseHint').textContent = DESK ? 'Press P or click to resume' : 'Tap to resume';
+    if (v) { musicStop(); shush(); } else { musicStart(mode === 'run' ? 134 : 104); if (G) G.lastTap = now(); }
+  }
+  $('pauseScreen').addEventListener('pointerdown', e => { e.stopPropagation(); e.preventDefault(); setPaused(false); });
+  addEventListener('blur', () => setPaused(true));
+  document.addEventListener('visibilitychange', () => { if (document.hidden) setPaused(true); });
+  addEventListener('keydown', e => {
+    if (e.code === 'KeyM') { audio(); out(); setMuted(!muted); return; }
+    if (e.code === 'KeyP' || (e.code === 'Escape' && playing())) { e.preventDefault(); setPaused(!paused); return; }
+    if (paused) { e.stopImmediatePropagation(); e.preventDefault(); return; }
+    const menuOpen = $('startScreen').classList.contains('show'), endOpen = $('endScreen').classList.contains('show');
+    if (e.code === 'Enter' && (menuOpen || endOpen)) { e.preventDefault(); go(); }
+    else if (e.code === 'Escape' && endOpen) $('menuBtn').click();
+    else if (menuOpen && (e.code === 'ArrowLeft' || e.code === 'ArrowRight') && !e.repeat) {
+      charIdx = (charIdx + (e.code === 'ArrowRight' ? 1 : CHARS.length - 1)) % CHARS.length; renderPreviews();
+    }
+  }, true);
+  const go = () => { setPaused(false); mode === 'run' ? startRun() : (($('runApp').classList.remove('show')), startGame()); };
+  $('startBtn').addEventListener('click', go);
+  $('againBtn').addEventListener('click', go);
+  $('muteBtn').addEventListener('pointerdown', e => e.stopPropagation());
+  $('muteBtn').addEventListener('click', () => { audio(); out(); setMuted(!muted); });
+  setMuted(muted);
+  setMode('lift');
+  document.addEventListener('click', e => { if (e.target.closest('.overlay button')) SFX.click(); });
+  $('menuBtn').addEventListener('click', () => {
+    musicStop();
+    $('endScreen').classList.remove('show'); $('runApp').classList.remove('show'); $('startScreen').classList.add('show'); state = 'menu';
+    setMode(mode); renderPreviews();
+  });
+  addEventListener('resize', () => { if ($('runApp').classList.contains('show')) runResize(); });
+
+  let last = performance.now();
+  function frame(t) {
+    const dt = Math.min(0.05, (t - last) / 1000); last = t;
+    if (paused) { requestAnimationFrame(frame); return; }
+    tickBubbles(dt);
+    if (mode === 'run' && $('runApp').classList.contains('show')) { runUpdate(dt); runDraw(); }
+    else { update(dt); draw(); }
+    drawConfetti(dt);
+    requestAnimationFrame(frame);
+  }
+
+  newGame();
+  resize();
+  renderPreviews(); renderWorkouts(); refreshBest(); updateHud();
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { renderBackground(); renderPreviews(); });
+  requestAnimationFrame(frame);
+
+  window.__iron = { get G() { return G; }, get R() { return R; }, tap, loadState, LOAD_T, runInput };
+})();
+</script>
+</body>
+</html>
